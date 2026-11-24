@@ -1,0 +1,67 @@
+# Dependencies
+node_modules/
+**/node_modules/
+
+# Build output
+dist/
+**/dist/
+.vite/
+
+# Real environment files and secrets (examples stay trackable)
+.env
+.env.*
+!.env.example
+!.env.*.example
+.dev.vars
+.dev.vars.*
+!.dev.vars.example
+*.pem
+*.key
+*.p12
+
+# Cloudflare Wrangler local state
+.wrangler/
+**/.wrangler/
+.wranglerrc
+wrangler.toml.bak
+
+# Legacy local SQLite files (no longer used)
+*.sqlite
+*.sqlite3
+*.db
+*.db-journal
+*.db-shm
+*.db-wal
+*.sqlite-shm
+*.sqlite-wal
+backend/data/
+
+# Logs and OS files
+*.log
+npm-debug.log*
+.DS_Store
+Thumbs.db
+
+# Local AI development tools
+.agents/
+.opencode/
+.claude/
+.cursor/
+.windsurf/
+
+# Browser testing artifacts
+.playwright-cli/
+playwright-report/
+test-results/
+playwright/.auth/
+
+# Python cache
+__pycache__/
+*.pyc
+
+# Test coverage
+coverage/
+
+# Supabase local state
+supabase/.temp/
+supabase/.branches/

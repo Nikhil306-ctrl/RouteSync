@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 600" role="img" aria-labelledby="title">
+  <title id="title">Illustrated food plate</title>
+  <rect width="800" height="600" fill="#fff7ed"/>
+  <path d="M-20 470C145 392 214 508 370 430s246-43 450-147" fill="none" stroke="#fed7aa" stroke-width="5" stroke-dasharray="10 12"/>
+  <circle cx="400" cy="300" r="188" fill="#ffffff" stroke="#e2e8f0" stroke-width="3"/>
+  <circle cx="400" cy="300" r="136" fill="#f8fafc" stroke="#f1f5f9" stroke-width="3"/>
+  <path d="M315 319c18-50 51-84 85-84s67 34 85 84" fill="none" stroke="#ea580c" stroke-width="9" stroke-linecap="round"/>
+  <path d="M325 334h150" stroke="#0f172a" stroke-width="9" stroke-linecap="round" opacity=".86"/>
+  <circle cx="355" cy="282" r="14" fill="#16a34a" opacity=".85"/>
+  <circle cx="400" cy="260" r="11" fill="#ea580c" opacity=".9"/>
+  <circle cx="446" cy="286" r="16" fill="#f59e0b" opacity=".86"/>
+  <circle cx="604" cy="128" r="34" fill="#ea580c"/>
+  <path d="M590 128h28M604 114v28" stroke="#fff7ed" stroke-width="4" stroke-linecap="round"/>
+</svg>

@@ -1,0 +1,31 @@
+{
+  "name": "routesync",
+  "version": "0.1.0",
+  "private": true,
+  "description": "RouteSync - constraint-based food delivery management (Hono + Cloudflare Workers + Supabase)",
+  "type": "module",
+  "engines": {
+    "node": ">=22.12.0"
+  },
+  "scripts": {
+    "install:all": "npm install && npm --prefix backend install && npm --prefix frontend install",
+    "dev": "concurrently -n worker,frontend -c cyan,green \"npm:dev:worker\" \"npm:dev:frontend\"",
+    "dev:worker": "npm --prefix backend run dev",
+    "dev:frontend": "npm --prefix frontend run dev",
+    "build": "npm --prefix frontend run build",
+    "preview": "npm --prefix frontend run preview",
+    "test": "npm run test:local",
+    "test:local": "node --test tests/schema-static.test.mjs tests/role-routing.test.mjs tests/order-lifecycle.test.mjs",
+    "test:schema": "node --test tests/schema-static.test.mjs",
+    "test:routing": "node --test tests/role-routing.test.mjs",
+    "test:lifecycle": "node --test tests/order-lifecycle.test.mjs",
+    "test:remote": "node --test tests/remote-auth.test.mjs",
+    "seed:demo": "npm --prefix backend run seed:demo",
+    "worker:deploy": "npm --prefix backend run deploy",
+    "worker:tail": "npm --prefix backend run tail"
+  },
+  "devDependencies": {
+    "@playwright/cli": "^0.1.25",
+    "concurrently": "^10.0.7"
+  }
+}

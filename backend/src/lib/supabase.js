@@ -36,7 +36,7 @@ export function createUserScopedSupabase(env, accessToken) {
  * phase. Never derive it from a request body, query string or client-supplied
  * role claim. Supabase RLS must remain enabled.
  */
-export function createPrivilegedSupabase(env, { isAuthorized } = {}) {
+export function createPrivilegedSupabase(env, { isAuthorized, signal, timeoutMs } = {}) {
   if (isAuthorized !== true) {
     throw new Error('Privileged Supabase access requires explicit authorization.');
   }
@@ -44,5 +44,15 @@ export function createPrivilegedSupabase(env, { isAuthorized } = {}) {
     throw new Error('Supabase secret credentials are not configured.');
   }
 
-  return createClient(env.SUPABASE_URL, env.SUPABASE_SECRET_KEY, serverOptions);
+  return createClient(env.SUPABASE_URL, env.SUPABASE_SECRET_KEY, {
+    ...serverOptions,
+    ...((signal || timeoutMs) ? {
+      global: {
+        fetch: (input, init) => fetch(input, {
+          ...init,
+          signal: signal ?? AbortSignal.timeout(timeoutMs),
+        }),
+      },
+    } : {}),
+  });
 }

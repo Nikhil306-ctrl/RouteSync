@@ -14,14 +14,14 @@ export default function AuthLayout({ eyebrow, title, subtitle, children, footer,
     <main className="min-h-screen bg-canvas text-ink">
       <div className="grid min-h-screen lg:grid-cols-[minmax(360px,0.9fr)_minmax(480px,1.1fr)]">
         <section className="relative hidden overflow-hidden bg-ink p-10 text-white lg:flex lg:flex-col lg:justify-between xl:p-14">
-          <div className="absolute inset-0 bg-route-grid-dark opacity-70" aria-hidden="true" />
+
           <div className="relative">
             <BrandMark dark />
             <div className="mt-14 max-w-md">
-              <p className="text-xs font-extrabold uppercase tracking-[0.2em] text-orange-400">
+              <p className="text-xs font-semibold text-orange-300">
                 Delivery operations, scheduled with reason
               </p>
-              <h2 className="mt-4 font-display text-3xl font-bold leading-tight xl:text-4xl">
+              <h2 className="mt-4 font-display text-3xl font-bold leading-tight xl:text-[2.6rem]">
                 One control plane for time windows, kitchens and riders.
               </h2>
               <p className="mt-4 text-sm leading-7 text-slate-300">
@@ -71,16 +71,16 @@ export default function AuthLayout({ eyebrow, title, subtitle, children, footer,
             <div className={`w-full ${wide ? 'max-w-xl' : 'max-w-md'}`}>
               <div className="mb-7">
                 {eyebrow ? (
-                  <p className="flex items-center gap-2 text-xs font-extrabold uppercase tracking-[0.16em] text-accent">
+                  <p className="rs-eyebrow text-accent">
                     <LockKeyhole className="h-3.5 w-3.5" aria-hidden="true" />
                     {eyebrow}
                   </p>
                 ) : null}
-                <h1 className="mt-2 font-display text-2xl font-bold tracking-tight text-ink sm:text-3xl">{title}</h1>
+                <h1 className="rs-page-title mt-2 text-ink sm:text-[2rem]">{title}</h1>
                 {subtitle ? <p className="mt-2 text-sm leading-6 text-muted">{subtitle}</p> : null}
               </div>
 
-              <div className="rounded-xl border border-line bg-white p-5 shadow-[0_12px_30px_rgba(15,23,42,0.05)] sm:p-6">
+              <div className="rs-panel p-5 sm:p-6">
                 {children}
               </div>
               {footer}

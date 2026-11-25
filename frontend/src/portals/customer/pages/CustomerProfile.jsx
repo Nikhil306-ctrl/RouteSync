@@ -18,6 +18,7 @@ import { EmptyState, ErrorState, InlineNotice, LoadingState } from '../../../com
 import Button, { LinkButton } from '../../../components/ui/Button.jsx';
 import { LabeledInput } from '../../../components/ui/Field.jsx';
 import Modal from '../../../components/ui/Modal.jsx';
+import LocationPicker from '../../../components/map/LocationPicker.jsx';
 import { useAsyncData, useDocumentTitle } from '../../../hooks/useAsyncData.js';
 import { useAuth } from '../../../auth/AuthContext.jsx';
 import { ROLE_LABELS } from '../../../lib/roles.js';
@@ -63,6 +64,8 @@ export default function CustomerProfile() {
     city: 'Belagavi',
     state: 'Karnataka',
     pincode: '',
+    latitude: '',
+    longitude: '',
     is_default: false,
   });
   const [formError, setFormError] = useState('');
@@ -94,6 +97,8 @@ export default function CustomerProfile() {
     city: 'Belagavi',
     state: 'Karnataka',
     pincode: '',
+    latitude: '',
+    longitude: '',
     is_default: addresses.length === 0,
   });
 
@@ -116,6 +121,8 @@ export default function CustomerProfile() {
       city: address.city ?? 'Belagavi',
       state: address.state ?? 'Karnataka',
       pincode: address.pincode ?? '',
+      latitude: address.latitude ?? '',
+      longitude: address.longitude ?? '',
       is_default: Boolean(address.is_default),
     });
     setFormError('');
@@ -155,6 +162,13 @@ export default function CustomerProfile() {
     }
     if (addressForm.pincode && !/^\d{6}$/.test(addressForm.pincode)) {
       setFormError('Pincode must be exactly 6 digits.');
+      return;
+    }
+    if (!String(addressForm.latitude).trim() || !String(addressForm.longitude).trim() ||
+      !Number.isFinite(Number(addressForm.latitude)) || !Number.isFinite(Number(addressForm.longitude)) ||
+      Number(addressForm.latitude) < -90 || Number(addressForm.latitude) > 90 ||
+      Number(addressForm.longitude) < -180 || Number(addressForm.longitude) > 180) {
+      setFormError('Enter valid delivery latitude and longitude. Use coordinates for your saved address.');
       return;
     }
 
@@ -248,13 +262,13 @@ export default function CustomerProfile() {
 
               <div className="grid gap-4 sm:grid-cols-2">
                 <div>
-                  <p className="text-xs font-bold uppercase tracking-[0.1em] text-slate-500">Email</p>
+                  <p className="text-xs font-medium text-muted">Email</p>
                   <p className="mt-1.5 truncate rounded-lg border border-line bg-slate-50 px-3 py-2.5 text-sm text-slate-600">
                     {user?.email}
                   </p>
                 </div>
                 <div>
-                  <p className="text-xs font-bold uppercase tracking-[0.1em] text-slate-500">Role</p>
+                  <p className="text-xs font-medium text-muted">Role</p>
                   <p className="mt-1.5 flex items-center gap-2 rounded-lg border border-line bg-slate-50 px-3 py-2.5 text-sm text-slate-600">
                     <UserRound className="h-4 w-4 text-slate-400" aria-hidden="true" />
                     {ROLE_LABELS[role] ?? 'Customer'}
@@ -477,6 +491,29 @@ export default function CustomerProfile() {
               placeholder="590001"
               maxLength={6}
               hint="6 digits"
+            />
+          </div>
+          <div className="grid gap-4 sm:grid-cols-2">
+            <LabeledInput label="Latitude" required type="number" step="any" min="-90" max="90"
+              value={addressForm.latitude} onChange={(event) => setAddressForm((current) => ({ ...current, latitude: event.target.value }))}
+              hint="Coordinates for this delivery address" />
+            <LabeledInput label="Longitude" required type="number" step="any" min="-180" max="180"
+              value={addressForm.longitude} onChange={(event) => setAddressForm((current) => ({ ...current, longitude: event.target.value }))}
+              hint="Tap the map below or type exact values" />
+          </div>
+
+          <div className="rounded-xl border border-line bg-slate-50 p-3">
+            <p className="rs-label mb-2">Pin the delivery point</p>
+            <LocationPicker
+              value={addressForm}
+              height={240}
+              onChange={({ latitude, longitude }) =>
+                setAddressForm((current) => ({
+                  ...current,
+                  latitude: String(latitude),
+                  longitude: String(longitude),
+                }))
+              }
             />
           </div>
 

@@ -11,6 +11,7 @@ export function useAsyncData(loader, deps = []) {
   const [state, setState] = useState({ data: null, loading: true, error: null });
   const [tick, setTick] = useState(0);
   const quietRefreshRef = useRef(false);
+  const inFlightRef = useRef(null);
   const depsKey = JSON.stringify(deps);
 
   const reload = useCallback(() => {
@@ -43,8 +44,12 @@ export function useAsyncData(loader, deps = []) {
         : { ...current, loading: true, error: null },
     );
 
-    Promise.resolve()
-      .then(() => loaderRef.current())
+    const request = inFlightRef.current?.key === depsKey
+      ? inFlightRef.current.promise
+      : Promise.resolve().then(() => loaderRef.current());
+    inFlightRef.current = { key: depsKey, promise: request };
+
+    request
       .then((data) => {
         if (active) setState({ data, loading: false, error: null });
       })
@@ -56,6 +61,9 @@ export function useAsyncData(loader, deps = []) {
             error: error instanceof Error ? error : new Error('Unable to load this data.'),
           }));
         }
+      })
+      .finally(() => {
+        if (inFlightRef.current?.promise === request) inFlightRef.current = null;
       });
 
     return () => {

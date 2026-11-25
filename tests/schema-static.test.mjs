@@ -46,6 +46,13 @@ const EXPECTED_FILES = [
   '20261124100500_rls_policies.sql',
   '20261124100600_grants.sql',
   '20261124100700_order_lifecycle.sql',
+  '20261125100100_constraint_scheduling.sql',
+  '20261125100200_checkout_scheduling_coordinates.sql',
+  '20261125100300_fix_route_order_id_validation.sql',
+  '20261125100400_fix_route_order_text_elements.sql',
+  '20261125100500_fix_route_order_uuid_pattern.sql',
+  '20261126100100_phase7_live_operations.sql',
+  '20261127100100_phase8_security_reliability.sql',
 ];
 
 const migrationFiles = fs.existsSync(migrationsDir)

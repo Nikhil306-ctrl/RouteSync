@@ -1,4 +1,5 @@
 import { requireSupabase, unwrap } from './client.js';
+import { parseDeliveryCoordinates } from '../lib/addressCoordinates.js';
 
 export async function listAddresses(customerId) {
   const supabase = requireSupabase();
@@ -17,6 +18,7 @@ export async function listAddresses(customerId) {
 }
 
 export async function createAddress(customerId, values) {
+  const coordinates = parseDeliveryCoordinates(values);
   const supabase = requireSupabase();
   if (values.is_default) {
     const { error: resetError } = await supabase
@@ -41,6 +43,7 @@ export async function createAddress(customerId, values) {
         city: values.city?.trim() || 'Belagavi',
         state: values.state?.trim() || 'Karnataka',
         pincode: values.pincode?.trim() || null,
+        ...coordinates,
         is_default: Boolean(values.is_default),
       })
       .select()
@@ -49,6 +52,7 @@ export async function createAddress(customerId, values) {
 }
 
 export async function updateAddress(id, customerId, values) {
+  const coordinates = parseDeliveryCoordinates(values);
   const supabase = requireSupabase();
   if (values.is_default) {
     const { error: resetError } = await supabase
@@ -73,6 +77,7 @@ export async function updateAddress(id, customerId, values) {
         city: values.city?.trim(),
         state: values.state?.trim(),
         pincode: values.pincode?.trim() || null,
+        ...coordinates,
         is_default: values.is_default,
       })
       .eq('id', id)

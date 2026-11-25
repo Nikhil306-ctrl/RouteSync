@@ -1,3 +1,6 @@
+const photo = (id, extension = 'jpeg') =>
+  `https://images.pexels.com/photos/${id}/pexels-photo-${id}.${extension}?auto=compress&cs=tinysrgb&w=900`;
+
 export const RESTAURANT_IMAGES = {
   'belagavi-spice-house': {
     src: 'https://images.unsplash.com/photo-1585937421612-70a008356fbe?auto=format&fit=crop&w=1400&q=80',
@@ -13,23 +16,34 @@ export const RESTAURANT_IMAGES = {
   },
 };
 
-const FOOD_IMAGES = {
-  biryani: 'https://images.unsplash.com/photo-1567188040759-fb8a883dc6d8?auto=format&fit=crop&w=900&q=80',
-  thali: 'https://images.unsplash.com/photo-1585937421612-70a008356fbe?auto=format&fit=crop&w=900&q=80',
-  curry: 'https://images.unsplash.com/photo-1601050690597-df0568f70950?auto=format&fit=crop&w=900&q=80',
-  roti: 'https://images.unsplash.com/photo-1565557623262-b51c2513a641?auto=format&fit=crop&w=900&q=80',
-  rice: 'https://images.unsplash.com/photo-1512058564366-18510be2db19?auto=format&fit=crop&w=900&q=80',
-  kebab: 'https://images.unsplash.com/photo-1529042410759-befb1204b468?auto=format&fit=crop&w=900&q=80',
-  sandwich: 'https://images.unsplash.com/photo-1528735602780-2552fd46c7af?auto=format&fit=crop&w=900&q=80',
-  burger: 'https://images.unsplash.com/photo-1568901346375-23c9450c58cd?auto=format&fit=crop&w=900&q=80',
-  fries: 'https://images.unsplash.com/photo-1573080496219-bb080dd4f877?auto=format&fit=crop&w=900&q=80',
-  coffee: 'https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=900&q=80',
-  chai: 'https://images.unsplash.com/photo-1564890369478-c89ca6d9cde9?auto=format&fit=crop&w=900&q=80',
-  lime: 'https://images.unsplash.com/photo-1513558161293-cdaf765ed2fd?auto=format&fit=crop&w=900&q=80',
-  dessert: 'https://images.unsplash.com/photo-1565958011703-44f9829ba187?auto=format&fit=crop&w=900&q=80',
-  paneer: 'https://images.unsplash.com/photo-1567188040759-fb8a883dc6d8?auto=format&fit=crop&w=900&q=80',
-  default: 'https://images.unsplash.com/photo-1504674900247-0877df9cc836?auto=format&fit=crop&w=900&q=80',
+const DISH_PHOTOS = {
+  'paneer tikka': { src: photo(33430556), alt: 'Grilled paneer tikka with peppers and chutney' },
+  'chicken kabab': { src: photo(31648205), alt: 'Grilled chicken kebabs on skewers' },
+  'belagavi thali': { src: photo(35008222), alt: 'Indian thali with chapati, rice, dal and vegetables' },
+  'jowar roti meal': { src: photo(1051399), alt: 'Roti meal with vegetables and onions' },
+  'veg biryani': { src: photo(35041642), alt: 'Vegetable biryani with rice and vegetables' },
+  'chicken biryani': { src: photo(28674660), alt: 'Chicken biryani served with curry' },
+  'dal tadka': { src: photo(38108860), alt: 'Dal tadka garnished with herbs in a bowl' },
+  'gulab jamun': { src: photo(7406887), alt: 'Gulab jamun sweets soaking in syrup' },
+  'ragi mudde meal': { src: photo(37421007), alt: 'Indian flatbread and lentil meal' },
+  'north karnataka thali': { src: photo(39323513), alt: 'Indian thali with roti, lentils and vegetables' },
+  'chicken curry': { src: photo(35532821), alt: 'Indian chicken curry in a bowl' },
+  holige: { src: photo(37785546), alt: 'Freshly baked sweet flatbread' },
+  'jolada rotti': { src: photo(35066812), alt: 'Indian flatbread served in a basket' },
+  chapati: { src: photo(9797029), alt: 'Chapati flatbread in a woven basket' },
+  rice: { src: photo(7593253), alt: 'Seasoned rice in a bowl' },
+  sambar: { src: photo(35514447), alt: 'South Indian sambar served with idli' },
+  'veg sandwich': { src: photo(30107969), alt: 'Vegetable sandwich with fresh vegetables' },
+  'chicken sandwich': { src: photo(33014388), alt: 'Chicken sandwich with fries' },
+  'french fries': { src: photo(18339330), alt: 'Crisp french fries with seasoning' },
+  'veg burger': { src: photo(19709551), alt: 'Vegetable burger with chips and sauce' },
+  'chocolate brownie': { src: photo(33674422), alt: 'Chocolate brownie with ice cream' },
+  'filter coffee': { src: photo(38201891, 'png'), alt: 'South Indian filter coffee in a steel tumbler' },
+  'masala chai': { src: photo(29650995), alt: 'Masala chai with ginger' },
+  'fresh lime soda': { src: photo(38441763), alt: 'Lime soda with ice' },
 };
+
+const normalize = (value) => String(value ?? '').toLowerCase().replace(/\s+/g, ' ').trim();
 
 export function restaurantImage(restaurant) {
   if (!restaurant) return { src: null, alt: 'Restaurant' };
@@ -42,25 +56,13 @@ export function restaurantImage(restaurant) {
 }
 
 export function menuItemImage(item) {
-  if (!item) return { src: FOOD_IMAGES.default, alt: 'Dish' };
+  if (!item) return { src: null, alt: 'Dish' };
   if (item.image_url) return { src: item.image_url, alt: item.name ?? 'Dish' };
 
-  const name = String(item.name ?? '').toLowerCase();
-  let key = 'default';
-  if (name.includes('biryani')) key = 'biryani';
-  else if (name.includes('thali') || name.includes('meal')) key = 'thali';
-  else if (name.includes('sandwich')) key = 'sandwich';
-  else if (name.includes('burger')) key = 'burger';
-  else if (name.includes('fries')) key = 'fries';
-  else if (name.includes('coffee')) key = 'coffee';
-  else if (name.includes('chai') || name.includes('tea')) key = 'chai';
-  else if (name.includes('lime') || name.includes('soda')) key = 'lime';
-  else if (name.includes('jamun') || name.includes('holige') || name.includes('brownie')) key = 'dessert';
-  else if (name.includes('roti') || name.includes('chapati')) key = 'roti';
-  else if (name.includes('rice') || name.includes('sambar')) key = 'rice';
-  else if (name.includes('kabab') || name.includes('kebab')) key = 'kebab';
-  else if (name.includes('paneer') || name.includes('tikka')) key = 'paneer';
-  else if (name.includes('curry') || name.includes('dal')) key = 'curry';
+  const name = normalize(item.name);
+  const match = DISH_PHOTOS[name];
+  if (match) return match;
 
-  return { src: FOOD_IMAGES[key], alt: item.name ?? 'Dish' };
+  const key = Object.keys(DISH_PHOTOS).find((dish) => name.startsWith(`${dish} `));
+  return key ? DISH_PHOTOS[key] : { src: null, alt: item.name ?? 'Dish' };
 }

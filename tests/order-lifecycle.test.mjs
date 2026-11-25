@@ -193,7 +193,7 @@ test('trusted routes mount one role scope and call the matching database RPC', (
   assert.match(restaurantRoutes, /rpc\('transition_order_status'/);
 
   assert.match(adminRoutes, /requireRole\('admin'\)/);
-  assert.match(adminRoutes, /rpc\('assign_rider'/);
+  assert.match(adminRoutes, /await schedule\(schedulingClient\(c\.env\)/);
   assert.match(adminRoutes, /rpc\('transition_order_status'/);
 
   assert.match(riderRoutes, /requireRole\('rider'\)/);

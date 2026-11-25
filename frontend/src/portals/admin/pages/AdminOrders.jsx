@@ -423,7 +423,7 @@ export default function AdminOrders() {
             </p>
             {action.reason ? (
               <div>
-                <label htmlFor="admin-reason" className="mb-1 block text-xs font-bold uppercase tracking-wide text-slate-500">
+                <label htmlFor="admin-reason" className="rs-label mb-1">
                   Reason
                 </label>
                 <textarea
@@ -433,7 +433,7 @@ export default function AdminOrders() {
                   rows={3}
                   maxLength={280}
                   required
-                  className="w-full rounded-lg border border-line px-3 py-2 text-sm focus:border-accent focus:outline-none focus:ring-2 focus:ring-orange-100"
+                  className="rs-input"
                   placeholder="Explain why this order cannot continue."
                 />
                 <p className="mt-1 text-right text-[0.68rem] text-muted">{reason.length}/280</p>

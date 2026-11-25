@@ -260,7 +260,7 @@ export default function CustomerOrderDetail() {
           </div>
         }
       >
-        <label htmlFor="cancel-reason" className="mb-1 block text-xs font-bold uppercase tracking-wide text-slate-500">
+        <label htmlFor="cancel-reason" className="rs-label mb-1">
           Cancellation reason
         </label>
         <textarea
@@ -269,7 +269,7 @@ export default function CustomerOrderDetail() {
           onChange={(event) => setReason(event.target.value)}
           rows={3}
           maxLength={280}
-          className="w-full rounded-lg border border-line px-3 py-2 text-sm focus:border-accent focus:outline-none focus:ring-2 focus:ring-orange-100"
+          className="rs-input"
           placeholder="Explain why this order cannot continue."
         />
         <p className="mt-1 text-right text-[0.68rem] text-muted">{reason.length}/280</p>

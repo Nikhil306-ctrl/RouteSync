@@ -102,10 +102,10 @@ export default function CustomerRestaurants() {
   return (
     <div className="space-y-6">
       <section className="relative overflow-hidden rounded-2xl border border-slate-700 bg-ink text-white">
-        <div className="absolute inset-0 bg-route-grid-dark opacity-60" aria-hidden="true" />
+
         <div className="relative grid gap-8 p-6 sm:p-8 lg:grid-cols-[1.15fr_0.85fr] lg:items-center">
           <div>
-            <p className="flex items-center gap-2 text-[0.68rem] font-extrabold uppercase tracking-[0.18em] text-orange-400">
+            <p className="rs-eyebrow text-orange-300">
               <span className="h-1.5 w-1.5 rounded-full bg-accent" aria-hidden="true" />
               Customer ordering · Belagavi
             </p>
@@ -145,17 +145,15 @@ export default function CustomerRestaurants() {
           </div>
 
           <div className="hidden gap-2 sm:grid sm:grid-cols-3 lg:grid">
-            {heroImages.map((restaurant, index) => {
+            {heroImages.map((restaurant) => {
               const image = restaurantImage(restaurant);
               return (
                 <Link
                   key={restaurant.id}
                   to={`/customer/restaurants/${restaurant.slug}`}
-                  className={`group relative overflow-hidden rounded-xl border border-white/10 ${
-                    index === 1 ? 'mt-4' : index === 2 ? 'mt-8' : ''
-                  }`}
+                  className="group relative aspect-[4/5] overflow-hidden rounded-xl border border-white/10"
                 >
-                  <div className="h-36 w-full">
+                  <div className="h-full w-full">
                     <FoodImage src={image.src} alt={image.alt} fallback="restaurant" className="transition duration-500 group-hover:scale-[1.04]" />
                   </div>
                   <div className="absolute inset-0 bg-gradient-to-t from-ink/85 via-ink/10 to-transparent" aria-hidden="true" />
@@ -184,13 +182,13 @@ export default function CustomerRestaurants() {
         ].map((stat) => {
           const Icon = stat.icon;
           return (
-            <div key={stat.label} className="flex items-center gap-3 rounded-xl border border-line bg-white p-3.5">
+            <div key={stat.label} className="rs-panel flex items-center gap-3 p-3.5">
               <span className="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-warm text-accent">
                 <Icon className="h-4 w-4" aria-hidden="true" />
               </span>
               <div>
                 <p className="font-display text-xl font-bold leading-none text-ink">{stat.value}</p>
-                <p className="mt-1 text-[0.65rem] font-bold uppercase tracking-wide text-muted">{stat.label}</p>
+                <p className="mt-1 text-xs font-medium text-muted">{stat.label}</p>
               </div>
             </div>
           );
@@ -199,7 +197,7 @@ export default function CustomerRestaurants() {
 
       <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
         <div>
-          <p className="text-[0.68rem] font-extrabold uppercase tracking-[0.16em] text-accent">Browse the catalogue</p>
+          <p className="rs-eyebrow text-accent">Browse the catalogue</p>
           <h2 className="mt-1 font-display text-xl font-bold text-ink">
             {hasFilters ? `${filtered.length} matching kitchen${filtered.length === 1 ? '' : 's'}` : 'Local kitchens'}
           </h2>
@@ -253,9 +251,9 @@ export default function CustomerRestaurants() {
             return (
               <article
                 key={restaurant.id}
-                className="group flex flex-col overflow-hidden rounded-xl border border-line bg-white shadow-[0_1px_2px_rgba(15,23,42,0.04)] transition hover:border-orange-200 hover:shadow-[0_10px_24px_rgba(15,23,42,0.06)]"
+                className="rs-panel group flex flex-col overflow-hidden transition hover:border-orange-200 hover:shadow-[0_10px_24px_rgba(15,23,42,0.06)]"
               >
-                <Link to={`/customer/restaurants/${restaurant.slug}`} className="relative block h-44 overflow-hidden bg-slate-100">
+                <Link to={`/customer/restaurants/${restaurant.slug}`} className="relative block aspect-[16/10] overflow-hidden bg-slate-100">
                   <FoodImage
                     src={image.src}
                     alt={image.alt}
@@ -297,7 +295,7 @@ export default function CustomerRestaurants() {
                   </p>
 
                   <div className="mt-3 flex-1 rounded-lg border border-line bg-slate-50/70 p-2.5">
-                    <p className="text-[0.62rem] font-extrabold uppercase tracking-[0.12em] text-slate-500">
+                    <p className="text-xs font-semibold text-muted">
                       {matched.length ? 'Matching dishes' : 'From the menu'}
                     </p>
                     {preview.length ? (

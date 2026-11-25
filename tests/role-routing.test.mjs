@@ -187,10 +187,13 @@ test('customer checkout uses the trusted quote and idempotent create endpoints',
   assert.match(checkoutSource, /cash_on_delivery/);
 });
 
-test('customer tracking discloses that live GPS is unavailable', () => {
-  assert.match(trackingSource, /Live tracking is not available in this phase/);
-  assert.match(trackingSource, /not a live GPS map/);
-  assert.doesNotMatch(trackingSource, /MapContainer|Leaflet|google\.maps/i);
+test('customer tracking uses the trusted tracking API and labels shared positions', () => {
+  assert.match(trackingSource, /fetchCustomerOrderTracking/);
+  assert.match(trackingSource, /Location sharing is rider-controlled/);
+  assert.match(trackingSource, /straight line is labelled as an estimate/i);
+  assert.match(trackingSource, /RouteMap/);
+  assert.doesNotMatch(trackingSource, /from\('rider_locations'\)/);
+  assert.doesNotMatch(trackingSource, /google\.maps/i);
 });
 
 test('lifecycle portals call trusted Worker endpoints instead of direct order writes', () => {

@@ -6,7 +6,7 @@ import {
   Phone,
   ReceiptText,
   Route as RouteIcon,
-  ShieldAlert,
+  ShieldCheck,
   Store,
   Truck,
   UserRound,
@@ -17,21 +17,35 @@ import { StatusBadge } from '../../../components/ui/Badge.jsx';
 import { EmptyState, ErrorState, InlineNotice, LoadingState } from '../../../components/ui/States.jsx';
 import { LinkButton } from '../../../components/ui/Button.jsx';
 import OrderTimeline from '../../../components/portal/OrderTimeline.jsx';
+import RouteMap from '../../../components/map/RouteMap.jsx';
 import { useAsyncData, useDocumentTitle } from '../../../hooks/useAsyncData.js';
 import { useRealtimeRefresh } from '../../../hooks/useRealtimeRefresh.js';
 import { useAuth } from '../../../auth/AuthContext.jsx';
 import { formatDateTime, formatWindow } from '../../../lib/format.js';
-import { fetchCustomerOrder } from '../../../services/lifecycle.js';
+import {
+  fetchCustomerOrder,
+  fetchCustomerOrderTracking,
+} from '../../../services/lifecycle.js';
+
+const SOURCE_LABELS = {
+  gps: 'Browser GPS',
+  manual: 'Manual position',
+  simulated: 'Simulated position',
+  last_known: 'Last known position',
+};
 
 export default function CustomerOrderTracking() {
   const { orderId } = useParams();
   const { user } = useAuth();
   useDocumentTitle('Order tracking');
 
-  const { data, loading, error, reload, reloadQuiet } = useAsyncData(
-    () => fetchCustomerOrder(orderId),
-    [orderId],
-  );
+  const { data, loading, error, reload, reloadQuiet } = useAsyncData(async () => {
+    const [detail, tracking] = await Promise.all([
+      fetchCustomerOrder(orderId),
+      fetchCustomerOrderTracking(orderId),
+    ]);
+    return { ...detail, tracking };
+  }, [orderId]);
 
   useRealtimeRefresh({
     channelName: `customer-tracking-${orderId}`,
@@ -42,14 +56,18 @@ export default function CustomerOrderTracking() {
     ],
     refresh: reloadQuiet,
     enabled: Boolean(orderId),
+    intervalMs: 10_000,
   });
 
   if (loading) return <LoadingState rows={5} label="Loading order tracking" />;
   if (error) return <ErrorState error={error} onRetry={reload} />;
 
   const order = data?.order;
-  const assignment = data?.assignment;
+  const tracking = data?.tracking;
+  const assignment = tracking?.assignment ?? data?.assignment;
   const events = data?.events ?? [];
+  const riderLocation = tracking?.rider_location ?? null;
+  const stops = tracking?.stops ?? [];
 
   if (!order || order.customer_id !== user?.id) {
     return (
@@ -67,6 +85,12 @@ export default function CustomerOrderTracking() {
     );
   }
 
+  const hasMapPoints = Boolean(
+    (order.restaurant?.latitude && order.restaurant?.longitude) ||
+      (order.delivery_latitude && order.delivery_longitude) ||
+      riderLocation,
+  );
+
   return (
     <div className="space-y-5">
       <Link to={`/customer/orders/${order.id}`} className="inline-flex items-center gap-1.5 text-xs font-bold text-slate-600 hover:text-ink">
@@ -76,7 +100,7 @@ export default function CustomerOrderTracking() {
       <PageHeader
         eyebrow={`Order #${order.id.slice(0, 8)}`}
         title="Order tracking"
-        description="Recorded order and assignment state. This is not a live GPS map and no route line is drawn."
+        description="Recorded order state with the latest location the delivery partner chose to share. A straight line is labelled as an estimate when road routing is unavailable."
         actions={
           <>
             <LinkButton to="/customer/orders" variant="secondary" icon={ReceiptText}>All orders</LinkButton>
@@ -85,11 +109,11 @@ export default function CustomerOrderTracking() {
         }
       />
 
-      <InlineNotice tone="neutral" title="Live tracking is not available in this phase">
+      <InlineNotice tone="neutral" title="Location sharing is rider-controlled">
         <span className="flex items-start gap-2">
-          <ShieldAlert className="mt-0.5 h-4 w-4 shrink-0 text-amber-600" aria-hidden="true" />
-          Rider GPS positions, route polylines and live ETAs are not exposed by the current interface.
-          This page shows only recorded order and assignment timestamps from the database.
+          <ShieldCheck className="mt-0.5 h-4 w-4 shrink-0 text-emerald-600" aria-hidden="true" />
+          A position appears only after the delivery partner shares it from their portal. Rider identity,
+          phone number and background GPS are never exposed to customers.
         </span>
       </InlineNotice>
 
@@ -129,6 +153,85 @@ export default function CustomerOrderTracking() {
         <div className="space-y-4">
           <Card>
             <CardHeader
+              title="Live route"
+              description="Pickup, drop-off and the latest rider-shared position."
+            />
+            <CardBody>
+              {hasMapPoints ? (
+                <RouteMap
+                  restaurant={order.restaurant}
+                  dropoff={{
+                    latitude: order.delivery_latitude,
+                    longitude: order.delivery_longitude,
+                  }}
+                  rider={riderLocation}
+                  height={340}
+                  description="Map showing the restaurant, your delivery address and the delivery partner"
+                />
+              ) : (
+                <EmptyState
+                  compact
+                  icon={MapPin}
+                  title="Coordinates are not available"
+                  description="This order does not have both pickup and drop-off coordinates, so a map cannot be drawn."
+                />
+              )}
+
+              {riderLocation ? (
+                <div
+                  className={`mt-3 rounded-lg border p-3 text-xs leading-5 ${
+                    riderLocation.stale
+                      ? 'border-amber-200 bg-amber-50 text-amber-900'
+                      : 'border-emerald-200 bg-emerald-50 text-emerald-900'
+                  }`}
+                >
+                  <p className="flex items-center gap-1.5 font-bold">
+                    <Truck className="h-3.5 w-3.5" aria-hidden="true" />
+                    {riderLocation.stale ? 'Last shared position' : 'Delivery partner position'} ·{' '}
+                    {SOURCE_LABELS[riderLocation.source] ?? riderLocation.source}
+                  </p>
+                  <p className="mt-1">
+                    Updated {formatDateTime(riderLocation.recorded_at)}
+                    {riderLocation.accuracy_meters != null
+                      ? ` · ±${Math.round(Number(riderLocation.accuracy_meters))} m`
+                      : ''}
+                  </p>
+                  {riderLocation.source === 'simulated' ? (
+                    <p className="mt-1 font-semibold">This position was simulated for demonstration.</p>
+                  ) : null}
+                  {riderLocation.stale ? (
+                    <p className="mt-1 font-semibold">
+                      The position is more than five minutes old; the rider may not be sharing right now.
+                    </p>
+                  ) : null}
+                </div>
+              ) : (
+                <p className="mt-3 rounded-lg border border-line bg-slate-50 p-3 text-xs leading-5 text-slate-600">
+                  No rider position has been shared yet. The map still shows the planned pickup and drop-off.
+                </p>
+              )}
+
+              {stops.length ? (
+                <ol className="mt-3 space-y-2">
+                  {stops.map((stop) => (
+                    <li key={`${stop.stop_type}-${stop.stop_sequence}`} className="flex items-start gap-2 text-xs">
+                      <span className="mt-0.5 grid h-5 w-5 shrink-0 place-items-center rounded-full bg-slate-100 text-[0.6rem] font-bold text-slate-600">
+                        {stop.stop_sequence}
+                      </span>
+                      <span className="min-w-0">
+                        <span className="font-bold capitalize text-ink">{stop.stop_type}</span>
+                        <span className="text-muted"> · {stop.status} · {formatDateTime(stop.planned_arrival)}</span>
+                        {stop.address_line ? <span className="block truncate text-muted">{stop.address_line}</span> : null}
+                      </span>
+                    </li>
+                  ))}
+                </ol>
+              ) : null}
+            </CardBody>
+          </Card>
+
+          <Card>
+            <CardHeader
               title="Delivery assignment"
               description="Assignment records are visible for your order when trusted dispatch has created one."
             />
@@ -148,7 +251,7 @@ export default function CustomerOrderTracking() {
                 </dl>
                 <p className="mt-3 flex items-start gap-2 rounded-lg border border-line bg-slate-50 p-3 text-xs leading-5 text-slate-600">
                   <UserRound className="mt-0.5 h-4 w-4 shrink-0 text-slate-400" aria-hidden="true" />
-                  Rider identity, phone number and live location are not exposed to customers in this phase.
+                  Rider identity, phone number and background location are not exposed to customers.
                 </p>
               </CardBody>
             ) : (
@@ -206,14 +309,6 @@ export default function CustomerOrderTracking() {
               </CardBody>
             </Card>
           </div>
-
-          <InlineNotice tone="neutral" title="Why there is no map">
-            <span className="flex items-start gap-2">
-              <RouteIcon className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
-              Route geometry and live rider positions require a tracking integration that is not part of
-              this phase. Showing a fabricated route or ETA would misrepresent the order state.
-            </span>
-          </InlineNotice>
         </div>
       </div>
     </div>

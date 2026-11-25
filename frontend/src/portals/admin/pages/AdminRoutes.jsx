@@ -8,6 +8,7 @@ import { Select } from '../../../components/ui/Field.jsx';
 import { TableShell, TBody, TD, TH, THead, TR } from '../../../components/ui/Table.jsx';
 import Button from '../../../components/ui/Button.jsx';
 import Modal from '../../../components/ui/Modal.jsx';
+import StopsMap from '../../../components/map/StopsMap.jsx';
 import { useAsyncData, useDocumentTitle } from '../../../hooks/useAsyncData.js';
 import { formatDateTime, titleCase } from '../../../lib/format.js';
 import { listAdminRoutes } from '../../../services/admin.js';
@@ -47,7 +48,7 @@ export default function AdminRoutes() {
       <PageHeader
         eyebrow="Route operations"
         title="Delivery routes"
-        description="Planned and active route records, ordered stops and persisted route metrics. No route is generated in the browser."
+        description="Planned and active route records, ordered stops, persisted route metrics and an OpenStreetMap preview. No route is generated in the browser."
         actions={
           <Select value={status} onChange={(event) => setStatus(event.target.value)} aria-label="Filter route status" className="min-w-40">
             {routeStatuses.map((value) => <option key={value} value={value}>{value === 'all' ? 'All statuses' : titleCase(value)}</option>)}
@@ -100,10 +101,9 @@ export default function AdminRoutes() {
         />
       )}
 
-      <InlineNotice tone="warning" title="Map boundary">
-        An interactive map is not rendered because the approved frontend dependency set does not
-        include a map library. Stop order and stored route values are shown as records, not as a
-        fabricated road path.
+      <InlineNotice tone="neutral" title="Map preview">
+        Stops are plotted from their stored coordinates. The path is looked up from OSRM; when road
+        routing is unavailable, the map falls back to a straight-line estimate and labels it as such.
       </InlineNotice>
 
       <Modal
@@ -121,6 +121,14 @@ export default function AdminRoutes() {
                 {selected.stops?.length ?? 0} stops
               </span>
             </div>
+
+            {selected.stops?.some((stop) => stop.latitude != null && stop.longitude != null) ? (
+              <StopsMap stops={selected.stops} height={300} description={`Map of route ${selected.id.slice(0, 8)} stops`} />
+            ) : (
+              <p className="rounded-lg border border-dashed border-line p-4 text-xs text-muted">
+                No stop coordinates are stored for this route, so no map can be drawn.
+              </p>
+            )}
 
             <dl className="grid gap-4 rounded-lg border border-line bg-slate-50 p-4 sm:grid-cols-2">
               <DefinitionItem label="Planned start">{formatDateTime(selected.planned_start)}</DefinitionItem>
@@ -142,7 +150,7 @@ export default function AdminRoutes() {
                       </span>
                       <div className="min-w-0 flex-1">
                         <div className="flex flex-wrap items-center gap-2">
-                          <p className="text-xs font-bold uppercase tracking-wide text-slate-600">{titleCase(stop.stop_type)}</p>
+                          <p className="text-xs font-semibold text-muted">{titleCase(stop.stop_type)}</p>
                           <StatusBadge status={stop.status} dot={false} />
                         </div>
                         <p className="mt-1 text-sm text-ink">{stop.address_line || 'Address not recorded'}</p>

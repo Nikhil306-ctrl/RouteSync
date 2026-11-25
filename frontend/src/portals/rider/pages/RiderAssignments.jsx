@@ -122,7 +122,7 @@ export default function RiderAssignments() {
         </InlineNotice>
       ) : null}
 
-      <div className="rounded-xl border border-line bg-white">
+      <div className="rs-panel">
         <Tabs tabs={tabs} value={tab} onChange={setTab} className="px-3 pt-1" ariaLabel="Assignment groups" />
         <div className="p-3">
           <div className="relative">
@@ -147,7 +147,7 @@ export default function RiderAssignments() {
         />
       )}
 
-      <div className="rounded-lg border border-line bg-white p-4 text-xs leading-5 text-muted">
+      <div className="rs-panel p-4 text-xs leading-5 text-muted">
         <p className="flex items-center gap-2 font-semibold text-slate-700">
           <ShieldCheck className="h-4 w-4 text-emerald-600" aria-hidden="true" />
           Assignment acceptance, pickup and delivery are trusted lifecycle actions.

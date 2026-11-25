@@ -96,7 +96,8 @@ export function AuthProvider({ children }) {
 
   const signOut = useCallback(async () => {
     if (!supabase) return;
-    await supabase.auth.signOut();
+    const { error: signOutError } = await supabase.auth.signOut();
+    if (signOutError) throw signOutError;
     setSession(null);
     setProfile(null);
     setError(null);

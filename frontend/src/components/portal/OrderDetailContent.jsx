@@ -35,7 +35,7 @@ export default function OrderDetailContent({ order, customer = null, restaurant 
 
       <div className="grid gap-3 sm:grid-cols-2">
         <div className="rounded-lg border border-line p-4">
-          <p className="flex items-center gap-1.5 text-[0.66rem] font-extrabold uppercase tracking-[0.12em] text-slate-500">
+          <p className="flex items-center gap-1.5 text-xs font-semibold text-muted">
             <MapPin className="h-3.5 w-3.5 text-accent" aria-hidden="true" /> Delivery address
           </p>
           <p className="mt-2 text-sm font-semibold leading-6 text-ink">{order.delivery_address_line}</p>
@@ -52,7 +52,7 @@ export default function OrderDetailContent({ order, customer = null, restaurant 
         </div>
 
         <div className="rounded-lg border border-line p-4">
-          <p className="flex items-center gap-1.5 text-[0.66rem] font-extrabold uppercase tracking-[0.12em] text-slate-500">
+          <p className="flex items-center gap-1.5 text-xs font-semibold text-muted">
             <StickyNote className="h-3.5 w-3.5 text-accent" aria-hidden="true" /> Instructions
           </p>
           <p className="mt-2 text-sm leading-6 text-slate-700">{order.special_instructions || 'No special instructions recorded.'}</p>
@@ -70,7 +70,7 @@ export default function OrderDetailContent({ order, customer = null, restaurant 
         </h3>
         <div className="mt-2 overflow-hidden rounded-lg border border-line">
           <table className="w-full text-left text-sm" aria-label="Order items">
-            <thead className="bg-slate-50 text-[0.64rem] uppercase tracking-wide text-slate-500">
+            <thead className="bg-[#eef2f0] text-xs font-semibold text-muted">
               <tr>
                 <th className="px-3 py-2 font-bold">Item</th>
                 <th className="px-3 py-2 text-center font-bold">Qty</th>

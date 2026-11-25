@@ -13,14 +13,90 @@ import {
   handleDbError,
   isUuid,
   privileged,
+  publicRiderLocation,
   readJson,
   unwrap,
+  validCoordinates,
   validateTransitionBody,
 } from '../lib/orderLifecycle.js';
 
 const router = new Hono();
 
+const LOCATION_SOURCES = ['gps', 'manual', 'simulated'];
+
 router.use('*', requireAuth, requireRole('rider'));
+
+router.post('/availability', async (c) => {
+  const body = await readJson(c);
+  if (typeof body?.isAvailable !== 'boolean') {
+    return fail(c, 422, 'INVALID_INPUT', 'Availability must be true or false.');
+  }
+  try {
+    const { data, error } = await privileged(c).rpc('set_rider_availability', {
+      p_rider_id: c.get('profile').id,
+      p_is_available: body.isAvailable,
+    });
+    if (error) throw error;
+    return c.json(data);
+  } catch (error) {
+    return handleDbError(c, error, 'Your availability could not be updated.');
+  }
+});
+
+router.post('/location', async (c) => {
+  const body = await readJson(c);
+  if (!body || typeof body !== 'object') {
+    return fail(c, 422, 'INVALID_INPUT', 'A JSON request body is required.');
+  }
+
+  const latitude = body.latitude;
+  const longitude = body.longitude;
+  if (!validCoordinates(latitude, longitude)) {
+    return fail(c, 422, 'INVALID_INPUT', 'Enter valid latitude and longitude.');
+  }
+
+  const source = String(body.source ?? 'gps').trim();
+  if (!LOCATION_SOURCES.includes(source)) {
+    return fail(c, 422, 'INVALID_INPUT', 'Choose a valid location source.');
+  }
+
+  const rawAccuracy = body.accuracyMeters ?? body.accuracy_meters;
+  let accuracyMeters = null;
+  if (rawAccuracy != null && rawAccuracy !== '') {
+    accuracyMeters = Number(rawAccuracy);
+    if (!Number.isFinite(accuracyMeters) || accuracyMeters < 0 || accuracyMeters > 100000) {
+      return fail(c, 422, 'INVALID_INPUT', 'Location accuracy is outside the accepted range.');
+    }
+  }
+
+  const assignmentId =
+    body.assignmentId ?? body.assignment_id ?? null;
+  if (!isUuid(String(assignmentId ?? ''))) {
+    return fail(c, 422, 'INVALID_INPUT', 'Choose a current assignment before sharing your location.');
+  }
+
+  const client = privileged(c);
+  try {
+    const { data, error } = await client.rpc('record_rider_location', {
+      p_rider_id: c.get('profile').id,
+      p_assignment_id: assignmentId,
+      p_latitude: Number(latitude),
+      p_longitude: Number(longitude),
+      p_accuracy_meters: accuracyMeters,
+      p_source: source,
+    });
+    if (error) throw error;
+
+    return c.json({
+      location: {
+        ...publicRiderLocation(data),
+        assignment_id: data?.assignment_id ?? null,
+      },
+    }, 201);
+  } catch (error) {
+    return handleDbError(c, error, 'Your location could not be shared.');
+  }
+});
 
 async function loadRiderAssignmentDetail(client, riderId, assignmentId) {
   const assignment = await getAssignmentForRider(client, riderId, assignmentId);
@@ -30,8 +106,10 @@ async function loadRiderAssignmentDetail(client, riderId, assignmentId) {
     getOrderEvents(client, assignment.order_id),
     getAssignmentEvents(client, [assignment.id]),
   ]);
-
-  return { assignment, events: orderEvents, assignment_events: assignmentEvents };
+  const stops = assignment.route_id ? (await unwrap(client.from('route_stops')
+    .select('order_id, stop_sequence, stop_type, planned_arrival, address_line')
+    .eq('route_id', assignment.route_id).order('stop_sequence'))) ?? [] : [];
+  return { assignment, events: orderEvents, assignment_events: assignmentEvents, stops };
 }
 
 router.get('/assignments', async (c) => {

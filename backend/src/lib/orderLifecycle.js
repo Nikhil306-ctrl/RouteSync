@@ -75,8 +75,40 @@ export const ASSIGNMENT_EVENT_FIELDS =
 export const ORDER_EVENT_FIELDS =
   'id, order_id, from_status, to_status, actor_id, actor_role, reason, metadata, created_at';
 
+export const TRACKING_STOP_FIELDS =
+  'order_id, stop_sequence, stop_type, status, planned_arrival, planned_departure, address_line, latitude, longitude';
+
+export const TRACKING_STALE_MS = 5 * 60_000;
+
 export function isUuid(value) {
   return typeof value === 'string' && UUID_RE.test(value);
+}
+
+export function validCoordinates(latitude, longitude) {
+  return (
+    latitude != null &&
+    longitude != null &&
+    Number.isFinite(Number(latitude)) &&
+    Number.isFinite(Number(longitude)) &&
+    Math.abs(Number(latitude)) <= 90 &&
+    Math.abs(Number(longitude)) <= 180
+  );
+}
+
+/** Customer-safe location snapshot: never exposes rider identity or contact. */
+export function publicRiderLocation(location) {
+  if (!location) return null;
+  const recordedAt = location.recorded_at ? Date.parse(location.recorded_at) : null;
+  return {
+    latitude: Number(location.latitude),
+    longitude: Number(location.longitude),
+    accuracy_meters:
+      location.accuracy_meters == null ? null : Number(location.accuracy_meters),
+    source: location.source,
+    recorded_at: location.recorded_at,
+    stale:
+      !Number.isFinite(recordedAt) || Date.now() - recordedAt > TRACKING_STALE_MS,
+  };
 }
 
 export function clampLimit(value, fallback = 100, max = 250) {

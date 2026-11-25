@@ -17,6 +17,7 @@ const AdminDashboard = lazy(() => import('./portals/admin/pages/AdminDashboard.j
 const AdminOrders = lazy(() => import('./portals/admin/pages/AdminOrders.jsx'));
 const AdminDispatch = lazy(() => import('./portals/admin/pages/AdminDispatch.jsx'));
 const AdminRoutes = lazy(() => import('./portals/admin/pages/AdminRoutes.jsx'));
+const AdminLiveTracking = lazy(() => import('./portals/admin/pages/AdminLiveTracking.jsx'));
 const AdminRiders = lazy(() => import('./portals/admin/pages/AdminRiders.jsx'));
 const AdminRestaurants = lazy(() => import('./portals/admin/pages/AdminRestaurants.jsx'));
 const AdminViolations = lazy(() => import('./portals/admin/pages/AdminViolations.jsx'));
@@ -56,6 +57,7 @@ const portalRoutes = [
       { path: 'orders', element: <AdminOrders /> },
       { path: 'dispatch', element: <AdminDispatch /> },
       { path: 'routes', element: <AdminRoutes /> },
+      { path: 'tracking', element: <AdminLiveTracking /> },
       { path: 'riders', element: <AdminRiders /> },
       { path: 'restaurants', element: <AdminRestaurants /> },
       { path: 'violations', element: <AdminViolations /> },
@@ -121,7 +123,7 @@ function NotFound() {
         <div className="flex justify-center">
           <BrandMark to={null} />
         </div>
-        <p className="mt-6 text-[0.68rem] font-extrabold uppercase tracking-[0.18em] text-accent">404 · Off route</p>
+        <p className="rs-eyebrow mt-6 text-accent">404 · Off route</p>
         <h1 className="mt-2 font-display text-2xl font-bold tracking-tight text-ink">This page is not on the route map</h1>
         <p className="mt-2 text-sm leading-6 text-muted">
           The address you opened does not match a defined RouteSync screen. Return to the public site or

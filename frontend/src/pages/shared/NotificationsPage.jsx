@@ -109,7 +109,7 @@ export default function NotificationsPage({ eyebrow = 'Account', title = 'Notifi
                         {!notification.read_at ? <span className="ml-2 inline-block h-1.5 w-1.5 rounded-full bg-accent align-middle" aria-label="Unread" /> : null}
                       </h2>
                       <p className="mt-1 text-sm leading-6 text-slate-600">{notification.body}</p>
-                      <p className="mt-1.5 text-[0.68rem] font-semibold uppercase tracking-wide text-slate-400">
+                      <p className="mt-1.5 text-xs font-medium text-muted">
                         {notification.type.replaceAll('_', ' ')} · {formatDateTime(notification.created_at)}
                         {notification.order_id ? ` · Order ${notification.order_id.slice(0, 8)}` : ''}
                       </p>

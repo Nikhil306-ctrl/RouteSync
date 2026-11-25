@@ -16,6 +16,8 @@ import { StatusBadge } from '../../../components/ui/Badge.jsx';
 import { EmptyState, ErrorState, InlineNotice, LoadingState } from '../../../components/ui/States.jsx';
 import { TableShell, TBody, TD, TH, THead, TR } from '../../../components/ui/Table.jsx';
 import Modal from '../../../components/ui/Modal.jsx';
+import StopsMap from '../../../components/map/StopsMap.jsx';
+import RiderLocationPanel from '../../../components/map/RiderLocationPanel.jsx';
 import { useAsyncData, useDocumentTitle } from '../../../hooks/useAsyncData.js';
 import { useAuth } from '../../../auth/AuthContext.jsx';
 import { formatDateTime, titleCase } from '../../../lib/format.js';
@@ -62,7 +64,7 @@ export default function RiderRoute() {
       <PageHeader
         eyebrow="My route"
         title="Route records"
-        description="Planned routes and ordered stops stored by dispatch. Navigation opens your map app; RouteSync does not draw a live route line."
+        description="Planned routes and ordered stops stored by dispatch. The map is drawn from recorded coordinates; road routing is labelled when available, and your shared position is optional."
         actions={
           <Link
             to="/delivery-partner/assignments"
@@ -97,6 +99,26 @@ export default function RiderRoute() {
                 {activeRoute.total_duration_seconds != null ? ` · ${Math.round(Number(activeRoute.total_duration_seconds) / 60)} min` : ''}
               </p>
             ) : null}
+            <StopsMap
+              stops={activeRoute.stops ?? []}
+              rider={data.rider}
+              height={300}
+              description="Map of the active route stops and your last shared position"
+            />
+            <div className="rounded-xl border border-line bg-slate-50 p-3">
+              <p className="rs-label mb-2">Share your position</p>
+              <RiderLocationPanel
+                assignmentId={activeRoute.stops?.find((stop) => stop.assignment_id)?.assignment_id ?? null}
+                defaultPoint={
+                  activeRoute.stops?.[0]?.latitude != null
+                    ? {
+                        latitude: activeRoute.stops[0].latitude,
+                        longitude: activeRoute.stops[0].longitude,
+                      }
+                    : data.rider
+                }
+              />
+            </div>
             <RouteStops route={activeRoute} />
           </CardBody>
         </Card>
@@ -138,11 +160,11 @@ export default function RiderRoute() {
         />
       )}
 
-      <InlineNotice tone="warning" title="No live tracking">
+      <InlineNotice tone="warning" title="Location sharing is manual">
         <span className="flex items-start gap-2">
           <ShieldAlert className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
-          A map is not rendered inside RouteSync. Stop coordinates only open an external map application, and your
-          stored location is not streamed as a live position in this phase.
+          RouteSync never reads background GPS. A position is stored only when you tap “Share browser location”
+          or “Share simulated location”. Simulated positions are labelled as simulated for dispatch and customers.
         </span>
       </InlineNotice>
 
@@ -165,6 +187,7 @@ export default function RiderRoute() {
                 {selected.total_duration_seconds == null ? '—' : `${Math.round(Number(selected.total_duration_seconds) / 60)} min`}
               </DefinitionItem>
             </dl>
+            <StopsMap stops={selected.stops ?? []} rider={data.rider} height={260} />
             <RouteStops route={selected} />
           </div>
         ) : null}
@@ -189,14 +212,14 @@ function RouteStops({ route }) {
       {stops.map((stop) => {
         const mapUrl = destinationMapUrl(stop.latitude, stop.longitude, stop.address_line || 'Route stop');
         return (
-          <li key={stop.id} className="rounded-lg border border-line bg-white p-3">
+          <li key={stop.id} className="rs-panel p-3">
             <div className="flex items-start gap-3">
               <span className="grid h-7 w-7 shrink-0 place-items-center rounded-full bg-warm text-xs font-bold text-accent">
                 {stop.stop_sequence}
               </span>
               <div className="min-w-0 flex-1">
                 <div className="flex flex-wrap items-center gap-1.5">
-                  <p className="text-[0.68rem] font-extrabold uppercase tracking-wide text-slate-500">{titleCase(stop.stop_type)}</p>
+                  <p className="text-xs font-semibold text-muted">{titleCase(stop.stop_type)}</p>
                   <StatusBadge status={stop.status} dot={false} />
                 </div>
                 <p className="mt-1 text-sm font-semibold text-ink">{stop.address_line || 'Address not recorded'}</p>

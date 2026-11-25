@@ -1,6 +1,7 @@
-/** E4: Communication and Tracking - reserved for a later phase. */
-export default {
-  id: 'E4',
-  name: 'Communication and Tracking',
-  phase: 'placeholder',
-};
+// Notifications, assignment events, audit rows and Realtime-visible changes are
+// written in the same database transaction as the schedule by persist_schedule.
+// The Worker reports outcomes without making restaurant confirmation contingent
+// on a second infrastructure operation.
+export function schedulingOutcome(result, persisted) {
+  return { run: persisted, metrics: result.metrics, assigned: persisted?.assigned ?? [], unscheduled: persisted?.unscheduled ?? [] };
+}

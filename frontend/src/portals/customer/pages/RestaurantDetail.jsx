@@ -150,7 +150,7 @@ export default function RestaurantDetail() {
         <ArrowLeft className="h-4 w-4" aria-hidden="true" /> All kitchens
       </Link>
 
-      <section className="overflow-hidden rounded-2xl border border-line bg-white">
+      <section className="rs-panel overflow-hidden">
         <div className="grid lg:grid-cols-[1.15fr_0.85fr]">
           <div className="relative h-56 bg-slate-100 sm:h-72 lg:h-full lg:min-h-[300px]">
             <FoodImage src={image.src} alt={image.alt} fallback="restaurant" loading="eager" />
@@ -218,7 +218,7 @@ export default function RestaurantDetail() {
         <div className="space-y-4">
           <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
             <div>
-              <p className="text-[0.68rem] font-extrabold uppercase tracking-[0.16em] text-accent">Menu</p>
+              <p className="rs-eyebrow text-accent">Menu</p>
               <h2 className="mt-1 font-display text-xl font-bold text-ink">Available dishes</h2>
               <p className="mt-1 text-xs text-muted">{totalAvailable} available item{totalAvailable === 1 ? '' : 's'} across {groupedMenu.length} section{groupedMenu.length === 1 ? '' : 's'}.</p>
             </div>
@@ -242,7 +242,7 @@ export default function RestaurantDetail() {
 
           {groupedMenu.length ? (
             groupedMenu.map((section) => (
-              <section key={section.id} className="overflow-hidden rounded-xl border border-line bg-white">
+              <section key={section.id} className="rs-panel overflow-hidden">
                 <CardHeader title={section.name} description={`${section.items.length} available item${section.items.length === 1 ? '' : 's'}`} />
                 <div className="divide-y divide-line">
                   {section.items.map((item) => {
@@ -335,7 +335,7 @@ export default function RestaurantDetail() {
                   </ul>
                   {cart.items.length > 4 ? <p className="text-xs text-muted">+{cart.items.length - 4} more items in the cart</p> : null}
                   <div className="flex items-center justify-between border-t border-line pt-3">
-                    <span className="text-xs font-bold uppercase tracking-wide text-slate-500">Item subtotal</span>
+                    <span className="text-xs font-semibold text-muted">Item subtotal</span>
                     <span className="font-display text-lg font-bold tabular-nums text-ink">{formatCurrency(cart.subtotalMinor)}</span>
                   </div>
                   <p className="text-[0.68rem] leading-4 text-muted">Fees, taxes and the delivery window are calculated by the trusted checkout flow.</p>
@@ -390,7 +390,7 @@ export default function RestaurantDetail() {
 
             <div className="flex flex-col gap-3 rounded-lg border border-line bg-slate-50 p-3 sm:flex-row sm:items-center sm:justify-between">
               <div>
-                <p className="text-xs font-bold uppercase tracking-wide text-slate-500">Quantity</p>
+                <p className="rs-label">Quantity</p>
                 <p className="mt-0.5 text-xs text-muted">Maximum 50 per dish.</p>
               </div>
               <div className="inline-flex items-center rounded-lg border border-line bg-white">

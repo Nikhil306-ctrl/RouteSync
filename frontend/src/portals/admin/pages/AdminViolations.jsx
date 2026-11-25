@@ -145,7 +145,7 @@ export default function AdminViolations() {
         <EmptyState
           icon={ShieldAlert}
           title={hasFilters ? 'No conflicts match these filters' : 'No constraint violations recorded'}
-          description={hasFilters ? 'Adjust the filters to inspect the stored conflict records.' : 'The conflict log is empty until the Phase 5 scheduling engine records a hard or soft constraint outcome.'}
+          description={hasFilters ? 'Adjust the filters to inspect the stored conflict records.' : 'Unscheduled orders and hard constraint rejections appear here after a scheduling run.'}
           action={hasFilters ? <Button variant="secondary" onClick={() => { setSearch(''); setSeverity('all'); setResolution('all'); }}>Clear filters</Button> : null}
         />
       )}
@@ -197,7 +197,7 @@ export default function AdminViolations() {
               <DefinitionItem label="Created">{formatDateTime(selected.created_at)}</DefinitionItem>
             </dl>
             <div>
-              <p className="text-xs font-bold uppercase tracking-[0.12em] text-slate-500">Stored details</p>
+              <p className="text-xs font-semibold text-muted">Stored details</p>
               <pre className="mt-1.5 max-h-64 overflow-auto rounded-lg bg-ink p-4 text-xs leading-5 text-slate-300">
                 {JSON.stringify(selected.details ?? {}, null, 2)}
               </pre>

@@ -5,7 +5,7 @@ export function Field({ label, hint, error, required, htmlFor, children, classNa
   return (
     <div className={`space-y-1.5 ${className}`}>
       {label ? (
-        <label htmlFor={htmlFor} className="block text-xs font-bold uppercase tracking-[0.1em] text-slate-600">
+        <label htmlFor={htmlFor} className="rs-label">
           {label}
           {required ? <span className="ml-1 text-accent">*</span> : null}
         </label>
@@ -22,8 +22,7 @@ export function Field({ label, hint, error, required, htmlFor, children, classNa
   );
 }
 
-const inputClass =
-  'w-full rounded-lg border border-line bg-white px-3.5 py-2.5 text-sm text-ink placeholder:text-slate-400 transition focus:border-accent focus:outline-none focus:ring-2 focus:ring-orange-100 disabled:bg-slate-50 disabled:text-slate-500';
+const inputClass = 'rs-input';
 
 export function Input({ className = '', ...props }) {
   return <input className={`${inputClass} ${className}`} {...props} />;

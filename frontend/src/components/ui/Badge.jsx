@@ -1,12 +1,12 @@
 const variants = {
-  neutral: 'border-slate-200 bg-slate-50 text-slate-700',
-  orange: 'border-orange-200 bg-orange-50 text-orange-800',
-  green: 'border-emerald-200 bg-emerald-50 text-emerald-800',
-  amber: 'border-amber-200 bg-amber-50 text-amber-800',
-  red: 'border-red-200 bg-red-50 text-red-700',
-  blue: 'border-sky-200 bg-sky-50 text-sky-800',
-  ink: 'border-slate-700 bg-slate-800 text-slate-100',
-  purple: 'border-violet-200 bg-violet-50 text-violet-800',
+  neutral: 'rs-badge--neutral',
+  orange: 'rs-badge--orange',
+  green: 'rs-badge--green',
+  amber: 'rs-badge--amber',
+  red: 'rs-badge--red',
+  blue: 'rs-badge--blue',
+  ink: 'rs-badge--ink',
+  purple: 'rs-badge--purple',
 };
 
 export default function Badge({ children, variant = 'neutral', className = '', dot = false }) {
@@ -23,7 +23,7 @@ export default function Badge({ children, variant = 'neutral', className = '', d
 
   return (
     <span
-      className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-[0.68rem] font-bold uppercase tracking-wide ${variants[variant]} ${className}`}
+      className={`rs-badge ${variants[variant] ?? variants.neutral} ${className}`}
     >
       {dot ? <span className={`h-1.5 w-1.5 rounded-full ${dotColor[variant]}`} aria-hidden="true" /> : null}
       {children}

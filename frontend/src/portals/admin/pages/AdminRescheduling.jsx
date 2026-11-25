@@ -1,27 +1,46 @@
 import { useMemo, useState } from 'react';
-import { History, RefreshCw, Route as RouteIcon, UserRound } from 'lucide-react';
+import { AlertTriangle, Clock3, History, RefreshCw, Route as RouteIcon, UserRound } from 'lucide-react';
 import PageHeader from '../../../components/ui/PageHeader.jsx';
 import { Card, CardHeader, DefinitionItem, StatCard } from '../../../components/ui/Card.jsx';
 import { StatusBadge } from '../../../components/ui/Badge.jsx';
 import { EmptyState, ErrorState, InlineNotice, LoadingState } from '../../../components/ui/States.jsx';
+import { Input } from '../../../components/ui/Field.jsx';
 import { TableShell, TBody, TD, TH, THead, TR } from '../../../components/ui/Table.jsx';
+import Button from '../../../components/ui/Button.jsx';
 import Modal from '../../../components/ui/Modal.jsx';
 import OrderDetailContent from '../../../components/portal/OrderDetailContent.jsx';
 import { useAsyncData, useDocumentTitle } from '../../../hooks/useAsyncData.js';
 import { formatDateTime } from '../../../lib/format.js';
 import { listAdminAssignments, listRidersWithProfiles } from '../../../services/riders.js';
+import { reportAdminPrepDelay } from '../../../services/lifecycle.js';
+import { useRealtimeRefresh } from '../../../hooks/useRealtimeRefresh.js';
+
+const DELAY_ELIGIBLE = ['confirmed', 'preparing', 'ready', 'assigned'];
 
 export default function AdminRescheduling() {
   useDocumentTitle('Rescheduling history');
   const [selected, setSelected] = useState(null);
+  const [delayOpen, setDelayOpen] = useState(false);
+  const [delayMinutes, setDelayMinutes] = useState('10');
+  const [delayReason, setDelayReason] = useState('');
+  const [delaySaving, setDelaySaving] = useState(false);
+  const [delayError, setDelayError] = useState('');
+  const [actionMessage, setActionMessage] = useState('');
 
-  const { data, loading, error, reload } = useAsyncData(async () => {
+  const { data, loading, error, reload, reloadQuiet } = useAsyncData(async () => {
     const [assignments, riders] = await Promise.all([
       listAdminAssignments(300),
       listRidersWithProfiles(),
     ]);
     return { assignments, riders };
   }, []);
+
+  useRealtimeRefresh({
+    channelName: 'admin-rescheduling-history',
+    tables: ['orders', 'assignments', 'assignment_events'],
+    refresh: reloadQuiet,
+    intervalMs: 30_000,
+  });
 
   const riderById = useMemo(
     () => new Map((data?.riders ?? []).map((rider) => [rider.id, rider])),
@@ -42,6 +61,45 @@ export default function AdminRescheduling() {
     [data],
   );
   const replacements = data?.assignments.filter((assignment) => assignment.replaced_by_assignment_id).length ?? 0;
+  const canDelay = selected?.order
+    && DELAY_ELIGIBLE.includes(selected.order.status)
+    && !selected.order.picked_up_at;
+
+  const submitDelay = async (event) => {
+    event.preventDefault();
+    if (!selected?.order) return;
+
+    const minutes = Number.parseInt(delayMinutes, 10);
+    if (!Number.isInteger(minutes) || minutes < 1 || minutes > 240) {
+      setDelayError('Delay must be a whole number between 1 and 240 minutes.');
+      return;
+    }
+    if (delayReason.trim().length > 280) {
+      setDelayError('The delay reason may not exceed 280 characters.');
+      return;
+    }
+
+    setDelaySaving(true);
+    setDelayError('');
+    try {
+      const response = await reportAdminPrepDelay(selected.order.id, {
+        delayMinutes: minutes,
+        reason: delayReason.trim(),
+      });
+      setActionMessage(
+        response.result?.released
+          ? `Order ${selected.order.id.slice(0, 8)} delayed by ${minutes} min. The current assignment was released and will be rescheduled automatically.`
+          : `Order ${selected.order.id.slice(0, 8)} delayed by ${minutes} min.`,
+      );
+      setDelayOpen(false);
+      setSelected(null);
+      reloadQuiet();
+    } catch (delayFailure) {
+      setDelayError(delayFailure.message ?? 'The preparation delay could not be recorded.');
+    } finally {
+      setDelaySaving(false);
+    }
+  };
 
   if (loading) return <LoadingState rows={6} label="Loading rescheduling history" />;
   if (error) return <ErrorState error={error} onRetry={reload} />;
@@ -54,15 +112,18 @@ export default function AdminRescheduling() {
         description="Current and historical assignment records. Replacement reasons and links appear only when trusted dispatch flows write them."
       />
 
+      {actionMessage ? <InlineNotice tone="success">{actionMessage}</InlineNotice> : null}
+
       <div className="grid gap-3 sm:grid-cols-3">
         <StatCard label="Current assignments" value={current.length} helper={`${data.assignments.length} assignment rows loaded`} icon={RouteIcon} tone="green" />
         <StatCard label="Historical / closed" value={historical.length} helper="Non-current or terminal assignments" icon={History} />
         <StatCard label="Replacement links" value={replacements} helper="Rows pointing to a replacement assignment" icon={RefreshCw} tone="orange" />
       </div>
 
-      <InlineNotice tone="warning" title="Phase 5 dependency">
-        Automatic rescheduling needs the trusted assignment service and conflict-resolution workflow.
-        This page reads existing records; it does not reassign riders or invent a conflict resolution.
+      <InlineNotice tone="warning" title="Rescheduling controls">
+        A dispatcher can report a preparation delay from an assignment record. The trusted database function
+        releases an uncollected assignment and marks it for automatic rescheduling; it never rewrites history or
+        invents a replacement partner.
       </InlineNotice>
 
       <Card>
@@ -153,7 +214,11 @@ export default function AdminRescheduling() {
 
       <Modal
         open={Boolean(selected)}
-        onClose={() => setSelected(null)}
+        onClose={() => {
+          setSelected(null);
+          setDelayOpen(false);
+          setDelayError('');
+        }}
         title="Assignment record"
         description={selected ? `Assignment ${selected.id.slice(0, 8)}` : ''}
         size="lg"
@@ -179,6 +244,86 @@ export default function AdminRescheduling() {
               <DefinitionItem label="Reason">{selected.reason || 'No reason recorded'}</DefinitionItem>
               <DefinitionItem label="Replaced by">{selected.replaced_by_assignment_id || '—'}</DefinitionItem>
             </dl>
+
+            {selected.order ? (
+              <section className="rounded-lg border border-line p-4">
+                <div className="flex flex-wrap items-start justify-between gap-3">
+                  <div>
+                    <h3 className="text-sm font-bold text-ink">Preparation timing</h3>
+                    <p className="mt-0.5 text-xs leading-5 text-muted">
+                      Order status: {selected.order.status}. Delays are accepted only before pickup.
+                    </p>
+                  </div>
+                  {canDelay ? (
+                    <Button
+                      size="sm"
+                      variant="secondary"
+                      icon={Clock3}
+                      onClick={() => {
+                        setDelayOpen((open) => !open);
+                        setDelayError('');
+                        setDelayMinutes('10');
+                        setDelayReason('');
+                      }}
+                    >
+                      {delayOpen ? 'Close delay form' : 'Report delay'}
+                    </Button>
+                  ) : null}
+                </div>
+
+                {canDelay && delayOpen ? (
+                  <form onSubmit={submitDelay} className="mt-4 space-y-3 border-t border-line pt-4">
+                    {delayError ? <InlineNotice tone="danger">{delayError}</InlineNotice> : null}
+                    <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-xs leading-5 text-amber-950">
+                      <p className="flex items-center gap-1.5 font-bold">
+                        <AlertTriangle className="h-3.5 w-3.5" aria-hidden="true" />
+                        The promised delivery window is enforced
+                      </p>
+                      <p className="mt-1">
+                        A revised readiness time after the delivery window is rejected by the database function.
+                      </p>
+                    </div>
+                    <div className="grid gap-3 sm:grid-cols-[140px_1fr]">
+                      <div>
+                        <label htmlFor="admin-delay-minutes" className="rs-label mb-1">
+                          Minutes
+                        </label>
+                        <Input
+                          id="admin-delay-minutes"
+                          type="number"
+                          min={1}
+                          max={240}
+                          step={1}
+                          value={delayMinutes}
+                          onChange={(event) => setDelayMinutes(event.target.value)}
+                          required
+                        />
+                      </div>
+                      <div>
+                        <label htmlFor="admin-delay-reason" className="rs-label mb-1">
+                          Reason (optional)
+                        </label>
+                        <Input
+                          id="admin-delay-reason"
+                          value={delayReason}
+                          onChange={(event) => setDelayReason(event.target.value)}
+                          maxLength={280}
+                          placeholder="Restaurant or dispatch reason"
+                        />
+                      </div>
+                    </div>
+                    <div className="flex justify-end gap-2">
+                      <Button type="button" variant="secondary" size="sm" onClick={() => setDelayOpen(false)} disabled={delaySaving}>
+                        Cancel
+                      </Button>
+                      <Button type="submit" size="sm" icon={Clock3} loading={delaySaving}>
+                        {delaySaving ? 'Saving…' : 'Apply delay'}
+                      </Button>
+                    </div>
+                  </form>
+                ) : null}
+              </section>
+            ) : null}
 
             {selected.order ? (
               <OrderDetailContent order={selected.order} />

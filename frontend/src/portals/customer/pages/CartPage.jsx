@@ -170,7 +170,7 @@ export default function CartPage() {
                   <span className="text-xs font-semibold text-slate-500">Scheduling required</span>
                 </div>
                 <div className="flex items-center justify-between gap-3 border-t border-line pt-3">
-                  <span className="text-xs font-bold uppercase tracking-wide text-slate-500">Item subtotal</span>
+                  <span className="text-xs font-semibold text-muted">Item subtotal</span>
                   <span className="font-display text-lg font-bold tabular-nums text-ink">
                     {formatCurrency(cart.subtotalMinor)}
                   </span>

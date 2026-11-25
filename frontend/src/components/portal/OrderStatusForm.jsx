@@ -73,7 +73,7 @@ export default function OrderStatusForm({
       </div>
       {needsReason && showCancelReason ? (
         <div>
-          <label htmlFor={`reason-${order.id}`} className="mb-1 block text-xs font-bold uppercase tracking-wide text-slate-500">
+          <label htmlFor={`reason-${order.id}`} className="rs-label mb-1">
             Cancellation reason
           </label>
           <textarea
@@ -81,7 +81,7 @@ export default function OrderStatusForm({
             value={reason}
             onChange={(event) => setReason(event.target.value)}
             rows={2}
-            className="w-full rounded-lg border border-line px-3 py-2 text-sm focus:border-accent focus:outline-none focus:ring-2 focus:ring-orange-100"
+            className="rs-input"
             placeholder="Explain why this order cannot continue."
           />
         </div>

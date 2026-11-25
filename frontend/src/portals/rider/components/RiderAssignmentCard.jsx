@@ -14,7 +14,7 @@ export default function RiderAssignmentCard({ assignment, compact = false }) {
   }
 
   return (
-    <article className="rounded-xl border border-line bg-white p-4 shadow-[0_1px_2px_rgba(15,23,42,0.04)]">
+    <article className="rs-panel p-4">
       <div className="flex flex-wrap items-center gap-1.5">
         <StatusBadge status={assignment.status} />
         <StatusBadge status={order.status} dot={false} />

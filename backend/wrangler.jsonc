@@ -3,6 +3,7 @@
   "name": "routesync",
   "main": "src/index.js",
   "compatibility_date": "2026-11-24",
+  "triggers": { "crons": ["* * * * *"] },
   "assets": {
     "directory": "../frontend/dist",
     "binding": "ASSETS",

@@ -110,6 +110,10 @@ export function fetchCustomerOrder(orderId) {
   return request(`/customer/orders/${orderId}`);
 }
 
+export function fetchCustomerOrderTracking(orderId) {
+  return request(`/customer/orders/${orderId}/tracking`);
+}
+
 export function quoteOrder({ restaurantId, addressId, items }) {
   return request('/customer/orders/quote', {
     method: 'POST',
@@ -162,6 +166,13 @@ export function transitionRestaurantOrder(orderId, payload) {
   });
 }
 
+export function reportPrepDelay(orderId, { delayMinutes, reason } = {}) {
+  return request(`/restaurant/orders/${orderId}/prep-delay`, {
+    method: 'POST',
+    body: { delayMinutes, reason },
+  });
+}
+
 // Admin / dispatcher -------------------------------------------------------
 
 export function fetchAdminOrders({ statuses, restaurantId, customerId, limit } = {}) {
@@ -185,6 +196,14 @@ export function fetchDispatchQueue() {
   return request('/admin/dispatch/queue');
 }
 
+export function runScheduling(orderIds) {
+  return request('/admin/dispatch/schedule', { method: 'POST', body: orderIds ? { orderIds } : {} });
+}
+
+export function fetchSchedulingRuns() {
+  return request('/admin/dispatch/runs');
+}
+
 export function fetchEligibleRiders(orderId) {
   return request(`/admin/riders/eligible${queryString({ orderId })}`);
 }
@@ -193,6 +212,17 @@ export function assignRider(orderId, { riderId, reason, expectedAssignmentId }) 
   return request(`/admin/orders/${orderId}/assign`, {
     method: 'POST',
     body: { riderId, reason, expectedAssignmentId },
+  });
+}
+
+export function fetchAdminRiderTracking() {
+  return request('/admin/tracking/riders');
+}
+
+export function reportAdminPrepDelay(orderId, { delayMinutes, reason } = {}) {
+  return request(`/admin/orders/${orderId}/prep-delay`, {
+    method: 'POST',
+    body: { delayMinutes, reason },
   });
 }
 
@@ -217,5 +247,25 @@ export function transitionRiderOrder(orderId, payload) {
   return request(`/rider/orders/${orderId}/transition`, {
     method: 'POST',
     body: payload,
+  });
+}
+
+export function setRiderAvailability(isAvailable) {
+  return request('/rider/availability', {
+    method: 'POST',
+    body: { isAvailable: Boolean(isAvailable) },
+  });
+}
+
+export function shareRiderLocation({
+  latitude,
+  longitude,
+  accuracyMeters,
+  source = 'gps',
+  assignmentId = null,
+} = {}) {
+  return request('/rider/location', {
+    method: 'POST',
+    body: { latitude, longitude, accuracyMeters, source, assignmentId },
   });
 }

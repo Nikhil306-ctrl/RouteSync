@@ -73,9 +73,12 @@ export default function AccountSettingsPage({ eyebrow = 'Account', title = 'Acco
 
   const handleSignOut = async () => {
     setSigningOut(true);
+    setError('');
     try {
       await signOut();
       navigate('/login', { replace: true, state: { message: 'You have been signed out.' } });
+    } catch (signOutError) {
+      setError(signOutError.message ?? 'Sign out failed. Please try again.');
     } finally {
       setSigningOut(false);
     }
@@ -116,13 +119,13 @@ export default function AccountSettingsPage({ eyebrow = 'Account', title = 'Acco
 
               <div className="grid gap-4 sm:grid-cols-2">
                 <div>
-                  <p className="text-xs font-bold uppercase tracking-[0.1em] text-slate-500">Email</p>
+                  <p className="text-xs font-medium text-muted">Email</p>
                   <p className="mt-1.5 flex items-center gap-2 rounded-lg border border-line bg-slate-50 px-3 py-2.5 text-sm text-slate-600">
                     <Mail className="h-4 w-4 text-slate-400" aria-hidden="true" /> {user?.email}
                   </p>
                 </div>
                 <div>
-                  <p className="text-xs font-bold uppercase tracking-[0.1em] text-slate-500">Role</p>
+                  <p className="text-xs font-medium text-muted">Role</p>
                   <p className="mt-1.5 flex items-center gap-2 rounded-lg border border-line bg-slate-50 px-3 py-2.5 text-sm text-slate-600">
                     <UserRound className="h-4 w-4 text-slate-400" aria-hidden="true" /> {ROLE_LABELS[role] ?? 'Unknown'}
                   </p>

@@ -107,7 +107,7 @@ export default function OrderTimeline({ order, events = [] }) {
               <p className={`text-sm font-semibold ${current ? 'text-ink' : complete ? 'text-slate-700' : 'text-slate-400'}`}>
                 {step.label}
                 {current ? (
-                  <span className="ml-2 rounded-full bg-orange-100 px-2 py-0.5 text-[0.6rem] font-bold uppercase tracking-wide text-orange-800">
+                  <span className="ml-2 rounded-full bg-orange-100 px-2 py-0.5 text-[0.68rem] font-semibold text-orange-800">
                     Now
                   </span>
                 ) : null}

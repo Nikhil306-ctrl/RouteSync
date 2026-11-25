@@ -7,7 +7,7 @@ export function Skeleton({ className = '' }) {
 
 export function LoadingState({ rows = 4, label = 'Loading records' }) {
   return (
-    <div className="rounded-xl border border-line bg-white p-5" aria-busy="true" aria-label={label}>
+    <div className="rs-panel p-5" aria-busy="true" aria-label={label}>
       <div className="mb-5 flex items-center gap-2 text-sm text-muted">
         <LoaderCircle className="h-4 w-4 animate-spin text-accent" aria-hidden="true" />
         {label}
@@ -23,7 +23,7 @@ export function LoadingState({ rows = 4, label = 'Loading records' }) {
 
 export function ErrorState({ error, onRetry, title = 'We could not load this view' }) {
   return (
-    <div className="rounded-xl border border-red-200 bg-red-50/60 p-5" role="alert">
+    <div className="rounded-xl border border-red-200 bg-[#fff5f3] p-5" role="alert">
       <div className="flex items-start gap-3">
         <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-red-600" aria-hidden="true" />
         <div className="min-w-0 flex-1">
@@ -52,7 +52,7 @@ export function EmptyState({
 }) {
   return (
     <div
-      className={`flex flex-col items-center justify-center rounded-xl border border-dashed border-slate-300 bg-white text-center ${
+      className={`rs-empty flex flex-col items-center justify-center text-center ${
         compact ? 'px-5 py-9' : 'px-6 py-14'
       }`}
     >
@@ -82,7 +82,7 @@ export function InlineNotice({ tone = 'info', title, children, className = '' })
   return (
     <div
       role={tone === 'danger' ? 'alert' : tone === 'success' ? 'status' : undefined}
-      className={`rounded-lg border p-3.5 text-sm leading-6 ${tones[tone]} ${className}`}
+      className={`rs-notice ${tones[tone]} ${className}`}
     >
       {title ? <p className="mb-0.5 font-bold">{title}</p> : null}
       {children}

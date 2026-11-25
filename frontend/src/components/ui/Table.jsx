@@ -1,8 +1,8 @@
 export function TableShell({ children, className = '', label }) {
   return (
-    <div className={`overflow-hidden rounded-xl border border-line bg-white ${className}`}>
+    <div className={`rs-panel overflow-hidden ${className}`}>
       <div className="overflow-x-auto">
-        <table className="w-full min-w-[680px] border-collapse text-left text-sm" aria-label={label}>
+        <table className="rs-table w-full min-w-[680px] border-collapse text-left" aria-label={label}>
           {children}
         </table>
       </div>
@@ -28,7 +28,7 @@ export function TR({ children, className = '', onClick, ...props }) {
 
 export function TH({ children, className = '' }) {
   return (
-    <th scope="col" className={`whitespace-nowrap px-4 py-3 text-[0.65rem] font-extrabold uppercase tracking-[0.12em] text-slate-500 ${className}`}>
+    <th scope="col" className={`whitespace-nowrap px-4 py-3 text-xs font-semibold text-muted ${className}`}>
       {children}
     </th>
   );

@@ -21,11 +21,14 @@ import Badge from '../../../components/ui/Badge.jsx';
 import { EmptyState, ErrorState, InlineNotice, LoadingState } from '../../../components/ui/States.jsx';
 import Button, { LinkButton } from '../../../components/ui/Button.jsx';
 import { LabeledTextarea } from '../../../components/ui/Field.jsx';
+import RouteMap from '../../../components/map/RouteMap.jsx';
 import { useAsyncData, useDocumentTitle } from '../../../hooks/useAsyncData.js';
 import { useAuth } from '../../../auth/AuthContext.jsx';
 import { useCart } from '../../../hooks/useCart.jsx';
 import { formatCurrency, formatWindow } from '../../../lib/format.js';
 import { listAddresses } from '../../../services/addresses.js';
+import { getRestaurantById } from '../../../services/restaurants.js';
+import { hasDeliveryCoordinates } from '../../../lib/addressCoordinates.js';
 import {
   createCustomerOrder,
   newIdempotencyKey,
@@ -59,6 +62,11 @@ export default function CheckoutPage() {
     return listAddresses(user.id);
   }, [user?.id]);
 
+  const { data: restaurant } = useAsyncData(
+    () => (cart.restaurantId ? getRestaurantById(cart.restaurantId) : null),
+    [cart.restaurantId],
+  );
+
   const addresses = data ?? [];
   const defaultAddress = addresses.find((address) => address.is_default);
   const effectiveAddressId = selectedAddressId ?? defaultAddress?.id ?? addresses[0]?.id ?? null;
@@ -82,6 +90,8 @@ export default function CheckoutPage() {
   const quoteKey = JSON.stringify({
     restaurantId: cart.restaurantId,
     addressId: effectiveAddressId,
+    latitude: selectedAddress?.latitude,
+    longitude: selectedAddress?.longitude,
     items: cart.items.map((item) => [item.menuItemId, item.quantity]),
   });
 
@@ -91,7 +101,7 @@ export default function CheckoutPage() {
     error: quoteError,
     reload: reloadQuote,
   } = useAsyncData(async () => {
-    if (!cart.restaurantId || !effectiveAddressId || cart.items.length === 0) return null;
+    if (!cart.restaurantId || !effectiveAddressId || cart.items.length === 0 || !hasDeliveryCoordinates(selectedAddress)) return null;
     const response = await quoteOrder({
       restaurantId: cart.restaurantId,
       addressId: effectiveAddressId,
@@ -116,6 +126,7 @@ export default function CheckoutPage() {
     !quoteLoading &&
     !quoteError &&
     Boolean(selectedAddress) &&
+    hasDeliveryCoordinates(selectedAddress) &&
     cart.count > 0 &&
     !submitting;
 
@@ -127,8 +138,8 @@ export default function CheckoutPage() {
     },
     {
       label: 'Delivery address selected',
-      ok: Boolean(selectedAddress),
-      detail: selectedAddress ? selectedAddress.label : 'Add or choose an address',
+      ok: hasDeliveryCoordinates(selectedAddress),
+      detail: selectedAddress ? (hasDeliveryCoordinates(selectedAddress) ? selectedAddress.label : 'Edit this address to add delivery coordinates') : 'Add or choose an address',
     },
     {
       label: 'Server-verified totals',
@@ -215,6 +226,9 @@ export default function CheckoutPage() {
           units, and creates the order atomically. Payment is cash on delivery only.
         </span>
       </InlineNotice>
+      {selectedAddress && !hasDeliveryCoordinates(selectedAddress) ? <InlineNotice tone="warning" title="Address needs coordinates">
+        This saved address cannot be scheduled yet. <Link to="/customer/profile" className="font-bold underline">Edit it in your profile</Link> to add delivery latitude and longitude, or choose another address.
+      </InlineNotice> : null}
 
       <form onSubmit={handleSubmit} className="grid gap-5 lg:grid-cols-[1fr_360px] lg:items-start">
         <div className="space-y-5">
@@ -271,6 +285,17 @@ export default function CheckoutPage() {
                     })}
                   </div>
                 </fieldset>
+
+                {selectedAddress && hasDeliveryCoordinates(selectedAddress) && restaurant?.latitude != null ? (
+                  <div className="mt-4">
+                    <RouteMap
+                      restaurant={restaurant}
+                      dropoff={selectedAddress}
+                      height={240}
+                      description="Preview of the delivery route from the restaurant to the selected address"
+                    />
+                  </div>
+                ) : null}
               </CardBody>
             ) : (
               <div className="p-4">
@@ -411,7 +436,7 @@ export default function CheckoutPage() {
               </div>
 
               <div className="flex items-center justify-between gap-3 border-t border-line pt-3">
-                <span className="text-xs font-bold uppercase tracking-wide text-slate-500">Order total</span>
+                <span className="text-xs font-semibold text-muted">Order total</span>
                 <span className="font-display text-lg font-bold tabular-nums text-ink">
                   {quote ? formatCurrency(quote.total_minor, quote.currency) : '—'}
                 </span>

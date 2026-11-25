@@ -140,13 +140,13 @@ export default function AdminAudit() {
 
             <div className="grid gap-4 sm:grid-cols-2">
               <div>
-                <p className="text-xs font-bold uppercase tracking-[0.12em] text-slate-500">Before</p>
+                <p className="text-xs font-semibold text-muted">Before</p>
                 <pre className="mt-1.5 max-h-56 overflow-auto rounded-lg bg-ink p-3.5 text-xs leading-5 text-slate-300">
                   {JSON.stringify(selected.before_state ?? {}, null, 2)}
                 </pre>
               </div>
               <div>
-                <p className="text-xs font-bold uppercase tracking-[0.12em] text-slate-500">After</p>
+                <p className="text-xs font-semibold text-muted">After</p>
                 <pre className="mt-1.5 max-h-56 overflow-auto rounded-lg bg-ink p-3.5 text-xs leading-5 text-slate-300">
                   {JSON.stringify(selected.after_state ?? {}, null, 2)}
                 </pre>
@@ -154,7 +154,7 @@ export default function AdminAudit() {
             </div>
 
             <div>
-              <p className="text-xs font-bold uppercase tracking-[0.12em] text-slate-500">Metadata</p>
+              <p className="text-xs font-semibold text-muted">Metadata</p>
               <pre className="mt-1.5 max-h-56 overflow-auto rounded-lg bg-ink p-3.5 text-xs leading-5 text-slate-300">
                 {JSON.stringify(selected.metadata ?? {}, null, 2)}
               </pre>

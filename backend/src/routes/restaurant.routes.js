@@ -9,6 +9,7 @@ import {
   fail,
   getOrderAssignments,
   getOrderEvents,
+  getProfilesByIds,
   getOwnerRestaurant,
   handleDbError,
   isUuid,
@@ -91,12 +92,14 @@ router.get('/orders/:orderId', async (c) => {
       getOrderEvents(client, orderId),
       getOrderAssignments(client, orderId, { currentOnly: true }),
     ]);
+    const current = currentAssignment(assignments);
+    const rider = current ? (await getProfilesByIds(client, [current.rider_id]))[0] : null;
 
     return c.json({
       restaurant,
       order,
       events,
-      assignment: currentAssignment(assignments),
+      assignment: current ? { ...current, rider: rider ? { full_name: rider.full_name } : null } : null,
     });
   } catch (error) {
     return handleDbError(c, error, 'The order details could not be loaded.');
@@ -139,9 +142,66 @@ router.post('/orders/:orderId/transition', async (c) => {
     const order = await loadRestaurantOrder(client, restaurant.id, orderId);
     const events = await getOrderEvents(client, orderId);
 
-    return c.json({ result: data, order, events });
+    // Confirmed orders are durable scheduling work, picked up by the Worker
+    // cron. No detached promise depends on this HTTP request staying alive.
+    return c.json({ result: data, order, events,
+      scheduling: transition.status === 'confirmed' ? { pending: true } : null });
   } catch (error) {
     return handleDbError(c, error, 'The order status could not be updated.');
+  }
+});
+
+router.post('/orders/:orderId/prep-delay', async (c) => {
+  const { orderId } = c.req.param();
+  if (!isUuid(orderId)) return fail(c, 404, 'NOT_FOUND', 'Order not found.');
+
+  const body = await readJson(c);
+  if (!body || typeof body !== 'object') {
+    return fail(c, 422, 'INVALID_INPUT', 'A JSON request body is required.');
+  }
+
+  const delayMinutes = Number(body.delayMinutes ?? body.delay_minutes);
+  if (!Number.isInteger(delayMinutes) || delayMinutes < 1 || delayMinutes > 240) {
+    return fail(c, 422, 'INVALID_INPUT', 'Preparation delay must be between 1 and 240 minutes.');
+  }
+
+  const reason = String(body.reason ?? '').trim();
+  if (reason.length > 280) {
+    return fail(c, 422, 'INVALID_INPUT', 'The delay reason may not exceed 280 characters.');
+  }
+
+  const client = privileged(c);
+  const profile = c.get('profile');
+
+  try {
+    const { data, error } = await client.rpc('report_prep_delay', {
+      p_order_id: orderId,
+      p_actor_id: profile.id,
+      p_actor_role: 'restaurant',
+      p_delay_minutes: delayMinutes,
+      p_reason: reason || null,
+    });
+    if (error) throw error;
+
+    const restaurant = await getOwnerRestaurant(client, profile.id);
+    const order = restaurant
+      ? await loadRestaurantOrder(client, restaurant.id, orderId)
+      : null;
+    const [events, assignments] = await Promise.all([
+      getOrderEvents(client, orderId),
+      getOrderAssignments(client, orderId, { currentOnly: true }),
+    ]);
+    const current = currentAssignment(assignments);
+
+    return c.json({
+      result: data,
+      order,
+      events,
+      assignment: current ?? null,
+      scheduling: data?.rescheduling_pending ? { pending: true } : null,
+    });
+  } catch (error) {
+    return handleDbError(c, error, 'The preparation delay could not be recorded.');
   }
 });
 

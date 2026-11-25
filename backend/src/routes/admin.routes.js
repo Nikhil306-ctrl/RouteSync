@@ -1,10 +1,13 @@
 import { Hono } from 'hono';
+import { schedule, schedulingClient } from '../lib/scheduling.js';
+import { usableShift } from '../engines/e3-resource-management/index.js';
 import { requireAuth, requireRole } from '../middleware/auth.middleware.js';
 import {
   ADMIN_ORDER_SELECT,
   ORDER_STATUSES,
   clampLimit,
   computeOrderSummary,
+  currentAssignment,
   fail,
   getAssignmentEvents,
   getOrderAssignments,
@@ -15,6 +18,7 @@ import {
   isUuid,
   parseStatusList,
   privileged,
+  publicRiderLocation,
   readJson,
   unwrap,
   validateTransitionBody,
@@ -25,7 +29,7 @@ const router = new Hono();
 const ASSIGNMENT_PLAIN_FIELDS = `
   id, order_id, rider_id, route_id, scheduling_run_id, status, is_current,
   assigned_by, assigned_at, accepted_at, completed_at, planned_pickup_at,
-  planned_delivery_at, replaced_by_assignment_id, reason, created_at, updated_at
+  planned_delivery_at, replaced_by_assignment_id, reason, scheduling_explanation, created_at, updated_at
 `;
 
 const ADMIN_TRANSITIONS = ['confirmed', 'rejected', 'cancelled'];
@@ -38,6 +42,159 @@ router.use('*', requireAuth, requireRole('admin'));
 
 // Kept for role-enforcement checks and local smoke tests.
 router.get('/status', (c) => c.json({ status: 'ok', scope: 'admin' }));
+
+router.get('/tracking/riders', async (c) => {
+  const client = privileged(c);
+  try {
+    const riders =
+      (await unwrap(
+        await client
+          .from('riders')
+          .select(
+            'id, vehicle_type, vehicle_number, is_available, verification_status, current_latitude, current_longitude, last_location_at',
+          )
+          .order('id')
+          .limit(300),
+      )) ?? [];
+
+    const riderIds = riders.map((rider) => rider.id);
+    if (!riderIds.length) {
+      return c.json({ riders: [], generated_at: new Date().toISOString() });
+    }
+
+    const [profiles, assignments, locations] = await Promise.all([
+      getProfilesByIds(client, riderIds),
+      unwrap(
+        await client
+          .from('assignments')
+          .select(
+            'id, order_id, rider_id, route_id, status, is_current, planned_pickup_at, planned_delivery_at, order:orders(id, status, delivery_address_line, estimated_ready_at, delivery_window_end)',
+          )
+          .in('rider_id', riderIds)
+          .eq('is_current', true)
+          .in('status', ['proposed', 'accepted', 'active'])
+          .order('created_at', { ascending: false }),
+      ),
+      unwrap(
+        await client
+          .from('rider_locations')
+          .select('rider_id, assignment_id, latitude, longitude, accuracy_meters, source, recorded_at')
+          .in('rider_id', riderIds)
+          .order('recorded_at', { ascending: false })
+          .limit(1000),
+      ),
+    ]);
+
+    const profileById = new Map(profiles.map((profile) => [profile.id, profile]));
+    const assignmentByRider = new Map();
+    for (const assignment of assignments ?? []) {
+      if (!assignmentByRider.has(assignment.rider_id)) {
+        assignmentByRider.set(assignment.rider_id, assignment);
+      }
+    }
+    const locationByRider = new Map();
+    for (const location of locations ?? []) {
+      if (!locationByRider.has(location.rider_id)) {
+        locationByRider.set(location.rider_id, location);
+      }
+    }
+
+    const rows = riders.map((rider) => {
+      const profile = profileById.get(rider.id) ?? null;
+      const assignment = assignmentByRider.get(rider.id) ?? null;
+      const latest = locationByRider.get(rider.id) ?? null;
+      const snapshot =
+        latest ??
+        (rider.current_latitude != null && rider.current_longitude != null
+          ? {
+              latitude: rider.current_latitude,
+              longitude: rider.current_longitude,
+              accuracy_meters: null,
+              source: 'last_known',
+              recorded_at: rider.last_location_at,
+            }
+          : null);
+
+      return {
+        id: rider.id,
+        full_name: profile?.full_name ?? '',
+        email: profile?.email ?? null,
+        phone: profile?.phone ?? null,
+        vehicle_type: rider.vehicle_type,
+        vehicle_number: rider.vehicle_number,
+        is_available: rider.is_available,
+        verification_status: rider.verification_status,
+        location: publicRiderLocation(snapshot),
+        assignment: assignment
+          ? {
+              id: assignment.id,
+              order_id: assignment.order_id,
+              route_id: assignment.route_id,
+              status: assignment.status,
+              planned_pickup_at: assignment.planned_pickup_at,
+              planned_delivery_at: assignment.planned_delivery_at,
+              order: assignment.order ?? null,
+            }
+          : null,
+      };
+    });
+
+    return c.json({ riders: rows, generated_at: new Date().toISOString() });
+  } catch (error) {
+    return handleDbError(c, error, 'Live delivery partner tracking could not be loaded.');
+  }
+});
+
+router.post('/orders/:orderId/prep-delay', async (c) => {
+  const { orderId } = c.req.param();
+  if (!isUuid(orderId)) return fail(c, 404, 'NOT_FOUND', 'Order not found.');
+
+  const body = await readJson(c);
+  if (!body || typeof body !== 'object') {
+    return fail(c, 422, 'INVALID_INPUT', 'A JSON request body is required.');
+  }
+
+  const delayMinutes = Number(body.delayMinutes ?? body.delay_minutes);
+  if (!Number.isInteger(delayMinutes) || delayMinutes < 1 || delayMinutes > 240) {
+    return fail(c, 422, 'INVALID_INPUT', 'Preparation delay must be between 1 and 240 minutes.');
+  }
+
+  const reason = String(body.reason ?? '').trim();
+  if (reason.length > 280) {
+    return fail(c, 422, 'INVALID_INPUT', 'The delay reason may not exceed 280 characters.');
+  }
+
+  const client = privileged(c);
+  const profile = c.get('profile');
+
+  try {
+    const { data, error } = await client.rpc('report_prep_delay', {
+      p_order_id: orderId,
+      p_actor_id: profile.id,
+      p_actor_role: 'admin',
+      p_delay_minutes: delayMinutes,
+      p_reason: reason || null,
+    });
+    if (error) throw error;
+
+    const [order, events, assignments] = await Promise.all([
+      getOrderById(client, orderId, ADMIN_ORDER_SELECT),
+      getOrderEvents(client, orderId),
+      getOrderAssignments(client, orderId, { currentOnly: true }),
+    ]);
+    const current = currentAssignment(assignments);
+
+    return c.json({
+      result: data,
+      order,
+      events,
+      assignment: current ?? null,
+      scheduling: data?.rescheduling_pending ? { pending: true } : null,
+    });
+  } catch (error) {
+    return handleDbError(c, error, 'The preparation delay could not be recorded.');
+  }
+});
 
 async function enrichAssignments(client, assignments) {
   const ids = assignments.map((assignment) => assignment.id);
@@ -310,6 +467,46 @@ router.get('/dispatch/queue', async (c) => {
   }
 });
 
+router.post('/dispatch/schedule', async (c) => {
+  const body = await readJson(c);
+  const ids = body?.orderIds;
+  if (ids != null && (!Array.isArray(ids) || !ids.length || ids.length > 30 || ids.some((id) => !isUuid(id)))) {
+    return fail(c, 422, 'INVALID_INPUT', 'Provide up to 30 valid order IDs.');
+  }
+  try {
+    return c.json(await schedule(schedulingClient(c.env), { ids, actorId: c.get('profile').id, source: 'admin' }));
+  } catch (error) {
+    if (error.stage && (error.name === 'TimeoutError' || error.name === 'AbortError' || /timeout|abort/i.test(error.message ?? ''))) {
+      return fail(c, 503, 'SCHEDULING_TIMEOUT', `Scheduling timed out during ${error.stage}. Refresh the order before retrying; the request may still complete.`);
+    }
+    return handleDbError(c, error, 'Scheduling could not be completed. Retry from dispatch.');
+  }
+});
+
+router.get('/dispatch/runs', async (c) => {
+  try {
+    const client = privileged(c);
+    const runs = await unwrap(client.from('scheduling_runs').select('id, status, algorithm, input_snapshot, metrics, started_at, completed_at, created_at').order('created_at', { ascending: false }).limit(50));
+    return c.json({ runs });
+  } catch (error) { return handleDbError(c, error, 'Scheduling history could not be loaded.'); }
+});
+
+router.get('/dispatch/runs/:runId', async (c) => {
+  const { runId } = c.req.param();
+  if (!isUuid(runId)) return fail(c, 404, 'NOT_FOUND', 'Scheduling run not found.');
+  try {
+    const client = privileged(c);
+    const run = await unwrap(client.from('scheduling_runs').select('*').eq('id', runId).maybeSingle());
+    if (!run) return fail(c, 404, 'NOT_FOUND', 'Scheduling run not found.');
+    const [violations, assignments, routes] = await Promise.all([
+      unwrap(client.from('constraint_violations').select('*').eq('scheduling_run_id', runId).limit(300)),
+      unwrap(client.from('assignments').select(ASSIGNMENT_PLAIN_FIELDS).eq('scheduling_run_id', runId)),
+      unwrap(client.from('delivery_routes').select('*, stops:route_stops(*)').eq('scheduling_run_id', runId)),
+    ]);
+    return c.json({ run, violations, assignments, routes });
+  } catch (error) { return handleDbError(c, error, 'Scheduling run details could not be loaded.'); }
+});
+
 router.get('/riders/eligible', async (c) => {
   const orderId = c.req.query('orderId');
   if (!isUuid(orderId)) {
@@ -356,7 +553,7 @@ router.get('/riders/eligible', async (c) => {
         (await unwrap(
           await client
             .from('rider_shifts')
-            .select('id, rider_id, starts_at, ends_at, status')
+            .select('id, rider_id, starts_at, ends_at, break_minutes, status')
             .in('rider_id', riderIds)
             .in('status', ['scheduled', 'active'])
             .lte('starts_at', nowIso)
@@ -373,7 +570,7 @@ router.get('/riders/eligible', async (c) => {
 
     const candidates = riders.map((rider) => {
       const profile = profileById.get(rider.id) ?? null;
-      const shift = shiftByRider.get(rider.id) ?? null;
+      const shift = usableShift(shiftByRider.get(rider.id), Date.now());
       const activeLoad = loads.get(rider.id) ?? 0;
 
       let reason = null;
@@ -386,7 +583,7 @@ router.get('/riders/eligible', async (c) => {
       } else if (!plan.feasible) {
         reason = 'The provisional delivery plan falls outside the delivery window.';
       } else if (!shift) {
-        reason = 'No scheduled shift covers the current time.';
+        reason = 'No usable shift remains after reserving break time.';
       } else if (activeLoad >= rider.max_concurrent_orders) {
         reason = `At capacity (${activeLoad} of ${rider.max_concurrent_orders} active orders).`;
       } else if (Date.parse(shift.ends_at) < deliveryMs) {
@@ -451,21 +648,21 @@ router.post('/orders/:orderId/assign', async (c) => {
     return fail(c, 422, 'INVALID_INPUT', 'The expected assignment reference is not valid.');
   }
 
-  const client = privileged(c);
   const profile = c.get('profile');
 
   try {
-    const { data, error } = await client.rpc('assign_rider', {
-      p_order_id: orderId,
-      p_rider_id: riderId,
-      p_assigned_by: profile.id,
-      p_reason: reason || null,
-      p_expected_assignment_id: expectedAssignmentId == null ? null : String(expectedAssignmentId),
+    if (expectedAssignmentId && !reason) return fail(c, 422, 'INVALID_INPUT', 'A reassignment reason is required.');
+    const scheduled = await schedule(schedulingClient(c.env), {
+      ids: [orderId], actorId: profile.id, source: 'manual', riderId,
+      override: expectedAssignmentId ? { assignmentId: expectedAssignmentId, reason } : null,
     });
-    if (error) throw error;
-
-    return c.json({ result: data }, data?.duplicate ? 200 : 201);
+    if (scheduled.duplicate) return c.json({ result: { duplicate: true } });
+    if (!scheduled.assigned?.includes(orderId)) return fail(c, 422, 'INVALID_STATE', 'The selected rider has no feasible route. Review the scheduling run and conflicts.');
+    return c.json({ result: scheduled }, 201);
   } catch (error) {
+    if (error.stage && (error.name === 'TimeoutError' || error.name === 'AbortError' || /timeout|abort/i.test(error.message ?? ''))) {
+      return fail(c, 503, 'SCHEDULING_TIMEOUT', `Scheduling timed out during ${error.stage}. Refresh the order before retrying; the request may still complete.`);
+    }
     return handleDbError(c, error, 'The rider assignment could not be saved.');
   }
 });

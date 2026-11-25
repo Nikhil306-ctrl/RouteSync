@@ -148,11 +148,11 @@ export default function RestaurantDashboard() {
             <CardBody>
               <dl className="grid grid-cols-2 gap-3">
                 <div className="rounded-lg bg-slate-50 p-3">
-                  <dt className="text-[0.65rem] font-bold uppercase tracking-wide text-slate-500">Orders</dt>
+                  <dt className="text-xs font-medium text-muted">Orders</dt>
                   <dd className="mt-1 font-display text-xl font-bold text-ink">{todayOrders.length}</dd>
                 </div>
                 <div className="rounded-lg bg-slate-50 p-3">
-                  <dt className="text-[0.65rem] font-bold uppercase tracking-wide text-slate-500">Delivered</dt>
+                  <dt className="text-xs font-medium text-muted">Delivered</dt>
                   <dd className="mt-1 font-display text-xl font-bold text-ink">{todayDelivered.length}</dd>
                 </div>
               </dl>

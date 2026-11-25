@@ -5,6 +5,7 @@ import {
   IDEMPOTENCY_MIN,
   ORDER_SELECT,
   ORDER_STATUSES,
+  TRACKING_STOP_FIELDS,
   clampLimit,
   computeOrderSummary,
   customerAssignment,
@@ -17,12 +18,27 @@ import {
   isUuid,
   parseStatusList,
   privileged,
+  publicRiderLocation,
   readJson,
   unwrap,
+  validCoordinates,
   validateOrderTarget,
 } from '../lib/orderLifecycle.js';
 
 const router = new Hono();
+
+export { validCoordinates };
+
+async function quoteLocationError(client, quote, restaurantId) {
+  if (!validCoordinates(quote?.delivery_latitude, quote?.delivery_longitude)) {
+    return 'This saved delivery address has no valid coordinates. Edit it in your profile before checkout.';
+  }
+  const restaurant = await unwrap(client.from('restaurants').select('latitude, longitude').eq('id', restaurantId).maybeSingle());
+  if (!validCoordinates(restaurant?.latitude, restaurant?.longitude)) {
+    return 'This restaurant has no delivery pickup coordinates. Please contact the restaurant.';
+  }
+  return null;
+}
 
 router.use('*', requireAuth, requireRole('customer'));
 
@@ -82,6 +98,91 @@ router.get('/orders/:orderId', async (c) => {
   }
 });
 
+router.get('/orders/:orderId/tracking', async (c) => {
+  const { orderId } = c.req.param();
+  if (!isUuid(orderId)) return fail(c, 404, 'NOT_FOUND', 'Order not found.');
+
+  const client = privileged(c);
+  try {
+    const order = await getCustomerOrder(client, c.get('profile').id, orderId);
+    if (!order) return fail(c, 404, 'NOT_FOUND', 'Order not found.');
+
+    const assignments = await getOrderAssignments(client, orderId, {
+      currentOnly: true,
+    });
+    const current = currentAssignment(assignments);
+
+    let riderLocation = null;
+    let stops = [];
+    let route = null;
+
+    const mayTrackRider = current && ['picked_up', 'out_for_delivery'].includes(order.status)
+      && ['accepted', 'active'].includes(current.status);
+    if (current) {
+      const [locations, stopRows, routeRow] = await Promise.all([
+        mayTrackRider ? unwrap(
+          client
+            .from('rider_locations')
+            .select('latitude, longitude, accuracy_meters, source, recorded_at')
+            .eq('rider_id', current.rider_id)
+            .order('recorded_at', { ascending: false })
+            .limit(1),
+        ) : [],
+        current.route_id
+          ? unwrap(
+              client
+                .from('route_stops')
+                .select(TRACKING_STOP_FIELDS)
+                .eq('route_id', current.route_id)
+                .eq('order_id', orderId)
+                .order('stop_sequence'),
+            )
+          : [],
+        current.route_id
+          ? unwrap(
+              client
+                .from('delivery_routes')
+                .select('id, status, planned_start, planned_end')
+                .eq('id', current.route_id)
+                .maybeSingle(),
+            )
+          : null,
+      ]);
+
+      riderLocation = locations?.[0] ?? null;
+      stops = stopRows ?? [];
+      route = routeRow ?? null;
+    }
+
+    return c.json({
+      order: {
+        id: order.id,
+        status: order.status,
+        delivery_address_line: order.delivery_address_line,
+        delivery_latitude: order.delivery_latitude,
+        delivery_longitude: order.delivery_longitude,
+        estimated_ready_at: order.estimated_ready_at,
+        delivery_window_start: order.delivery_window_start,
+        delivery_window_end: order.delivery_window_end,
+        picked_up_at: order.picked_up_at,
+        delivered_at: order.delivered_at,
+        restaurant: order.restaurant,
+      },
+      assignment: customerAssignment(current),
+      rider_location: publicRiderLocation(riderLocation),
+      stops,
+      route,
+      tracking: {
+        available: Boolean(riderLocation),
+        source: riderLocation?.source ?? null,
+      },
+      generated_at: new Date().toISOString(),
+    });
+  } catch (error) {
+    return handleDbError(c, error, 'Live tracking could not be loaded.');
+  }
+});
+
 router.post('/orders/quote', async (c) => {
   const body = await readJson(c);
   const target = validateOrderTarget(body);
@@ -96,6 +197,9 @@ router.post('/orders/quote', async (c) => {
       p_items: target.items,
     });
     if (error) throw error;
+
+    const locationError = await quoteLocationError(client, data, target.restaurantId);
+    if (locationError) return fail(c, 422, 'INVALID_DELIVERY_LOCATION', locationError);
 
     return c.json({ quote: data });
   } catch (error) {
@@ -138,6 +242,13 @@ router.post('/orders', async (c) => {
   const customerId = c.get('profile').id;
 
   try {
+    const { data: freshQuote, error: quoteError } = await client.rpc('quote_order', {
+      p_customer_id: customerId, p_restaurant_id: target.restaurantId,
+      p_address_id: target.addressId, p_items: target.items,
+    });
+    if (quoteError) throw quoteError;
+    const locationError = await quoteLocationError(client, freshQuote, target.restaurantId);
+    if (locationError) return fail(c, 422, 'INVALID_DELIVERY_LOCATION', locationError);
     const { data, error } = await client.rpc('create_order', {
       p_customer_id: customerId,
       p_restaurant_id: target.restaurantId,

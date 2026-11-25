@@ -1,7 +1,9 @@
 import { useMemo, useState } from 'react';
 import {
+  AlertTriangle,
   Check,
   ChevronRight,
+  Clock3,
   CookingPot,
   RefreshCw,
   Search,
@@ -24,6 +26,7 @@ import { formatCurrency, formatTime, formatWindow, titleCase } from '../../../li
 import {
   fetchRestaurantBoard,
   fetchRestaurantOrder,
+  reportPrepDelay,
   transitionRestaurantOrder,
 } from '../../../services/lifecycle.js';
 
@@ -39,6 +42,8 @@ const forwardStatus = {
   confirmed: 'preparing',
   preparing: 'ready',
 };
+
+const DELAY_ELIGIBLE = ['confirmed', 'preparing', 'ready', 'assigned'];
 
 const actionCopy = {
   accept: {
@@ -61,8 +66,9 @@ const actionCopy = {
   },
 };
 
-function OrderCard({ order, onAction, onDirect, onOpen, busy }) {
+function OrderCard({ order, onAction, onDirect, onDelay, onOpen, busy }) {
   const next = forwardStatus[order.status];
+  const canDelay = DELAY_ELIGIBLE.includes(order.status) && !order.picked_up_at;
 
   return (
     <article className={`rounded-xl border bg-white p-4 shadow-[0_1px_2px_rgba(15,23,42,0.04)] ${order.priority === 'urgent' ? 'border-red-200' : order.priority === 'high' ? 'border-orange-200' : 'border-line'}`}>
@@ -110,9 +116,14 @@ function OrderCard({ order, onAction, onDirect, onOpen, busy }) {
             Mark ready
           </Button>
         ) : order.status === 'ready' ? (
-          <span className="flex flex-1 items-center justify-center rounded-lg border border-dashed border-line px-2 py-1.5 text-[0.68rem] font-bold uppercase tracking-wide text-muted">
+          <span className="flex flex-1 items-center justify-center rounded-lg border border-dashed border-line px-2 py-1.5 text-xs font-semibold text-muted">
             Waiting for rider
           </span>
+        ) : null}
+        {canDelay ? (
+          <Button size="sm" variant="secondary" icon={Clock3} onClick={() => onDelay(order)}>
+            Delay
+          </Button>
         ) : null}
         <Button size="sm" variant="secondary" onClick={() => onOpen(order)}>Details</Button>
       </div>
@@ -136,6 +147,11 @@ export default function KitchenBoard() {
   const [saving, setSaving] = useState(false);
   const [actionError, setActionError] = useState('');
   const [actionMessage, setActionMessage] = useState('');
+  const [delayTarget, setDelayTarget] = useState(null);
+  const [delayMinutes, setDelayMinutes] = useState('10');
+  const [delayReason, setDelayReason] = useState('');
+  const [delaySaving, setDelaySaving] = useState(false);
+  const [delayError, setDelayError] = useState('');
 
   const { data, loading, error, reload, reloadQuiet } = useAsyncData(
     () => fetchRestaurantBoard({ limit: 300 }),
@@ -219,6 +235,49 @@ export default function KitchenBoard() {
     }
   };
 
+  const startDelay = (order) => {
+    setDelayTarget(order);
+    setDelayMinutes('10');
+    setDelayReason('');
+    setDelayError('');
+  };
+
+  const submitDelay = async (event) => {
+    event.preventDefault();
+    if (!delayTarget) return;
+
+    const minutes = Number.parseInt(delayMinutes, 10);
+    if (!Number.isInteger(minutes) || minutes < 1 || minutes > 240) {
+      setDelayError('Delay must be a whole number between 1 and 240 minutes.');
+      return;
+    }
+    if (delayReason.trim().length > 280) {
+      setDelayError('The delay reason may not exceed 280 characters.');
+      return;
+    }
+
+    setDelaySaving(true);
+    setDelayError('');
+    try {
+      const response = await reportPrepDelay(delayTarget.id, {
+        delayMinutes: minutes,
+        reason: delayReason.trim(),
+      });
+      setDelayTarget(null);
+      if (selected?.id === delayTarget.id) setSelected(null);
+      setActionMessage(
+        response.result?.released
+          ? `Order ${delayTarget.id.slice(0, 8)} delayed by ${minutes} min. The delivery assignment was released and will be rescheduled automatically.`
+          : `Order ${delayTarget.id.slice(0, 8)} delayed by ${minutes} min. The new estimate is stored.`,
+      );
+      reloadQuiet();
+    } catch (delayFailure) {
+      setDelayError(delayFailure.message ?? 'The preparation delay could not be recorded.');
+    } finally {
+      setDelaySaving(false);
+    }
+  };
+
   const submitAction = async (event) => {
     event.preventDefault();
     if (!action) return;
@@ -251,7 +310,9 @@ export default function KitchenBoard() {
     try {
       const response = await transitionRestaurantOrder(order.id, payload);
       setAction(null);
-      setActionMessage(`${actionCopy[type].success} Reference ${order.id.slice(0, 8)}.`);
+      setActionMessage(type === 'accept'
+        ? `${actionCopy[type].success} ${response.scheduling?.error ?? (response.scheduling?.assigned?.length ? 'A delivery partner has been proposed.' : 'Awaiting a feasible delivery partner; dispatch can retry.')} Reference ${order.id.slice(0, 8)}.`
+        : `${actionCopy[type].success} Reference ${order.id.slice(0, 8)}.`);
       setReason('');
       if (selected?.id === order.id) {
         setSelected(response.order);
@@ -300,6 +361,7 @@ export default function KitchenBoard() {
       order={order}
       onAction={startAction}
       onDirect={handleDirect}
+      onDelay={startDelay}
       onOpen={openDetails}
       busy={busy}
     />
@@ -323,7 +385,7 @@ export default function KitchenBoard() {
       {actionError && !action ? <InlineNotice tone="danger">{actionError}</InlineNotice> : null}
       {actionMessage ? <InlineNotice tone="success">{actionMessage}</InlineNotice> : null}
 
-      <div className="rounded-xl border border-line bg-white">
+      <div className="rs-panel">
         <Tabs tabs={tabs} value={tab} onChange={setTab} className="px-3 pt-1" ariaLabel="Kitchen order status" />
         <div className="grid gap-2.5 p-3 sm:grid-cols-[1fr_160px]">
           <div className="relative">
@@ -350,7 +412,7 @@ export default function KitchenBoard() {
               <section key={lane.key} className="min-w-0 rounded-xl border border-line bg-slate-50/60">
                 <header className="flex items-center justify-between gap-2 border-b border-line px-3 py-2.5">
                   <div>
-                    <h2 className="text-xs font-extrabold uppercase tracking-[0.1em] text-ink">{lane.label}</h2>
+                    <h2 className="text-sm font-bold text-ink">{lane.label}</h2>
                     <p className="text-[0.62rem] text-muted">{lane.helper}</p>
                   </div>
                   <span className="rounded-full bg-white px-2 py-0.5 text-[0.65rem] font-bold text-slate-600 ring-1 ring-line">{lane.orders.length}</span>
@@ -422,6 +484,11 @@ export default function KitchenBoard() {
               {detailCanCancel ? (
                 <Button size="sm" variant="danger" icon={X} onClick={() => startAction(selected, 'cancel')}>Cancel</Button>
               ) : null}
+              {DELAY_ELIGIBLE.includes(selected.status) && !selected.picked_up_at ? (
+                <Button size="sm" variant="secondary" icon={Clock3} onClick={() => startDelay(selected)}>
+                  Report delay
+                </Button>
+              ) : null}
               {!detailCanAccept && !detailCanPrepare && !detailCanReady && !detailCanCancel ? (
                 <p className="flex items-center gap-1.5 text-xs font-semibold text-muted">
                   <ChevronRight className="h-4 w-4" aria-hidden="true" />
@@ -444,9 +511,11 @@ export default function KitchenBoard() {
             {selectedAssignment ? (
               <InlineNotice tone="neutral" title="Delivery assignment">
                 Assignment #{selectedAssignment.id.slice(0, 8)} is {selectedAssignment.status.replaceAll('_', ' ')}.
+                {selectedAssignment.rider?.full_name ? ` Delivery partner: ${selectedAssignment.rider.full_name}.` : ''}
+                {selectedAssignment.scheduling_run_id ? ' Automatically scheduled.' : ''}
                 Pickup is blocked until the kitchen marks the order ready.
               </InlineNotice>
-            ) : null}
+            ) : selected.status === 'confirmed' || selected.status === 'preparing' || selected.status === 'ready' ? <InlineNotice tone="neutral" title="Awaiting scheduling">Dispatch can retry if a feasible rider is not yet available.</InlineNotice> : null}
           </div>
         ) : null}
       </Modal>
@@ -485,7 +554,7 @@ export default function KitchenBoard() {
 
             {action.type === 'accept' ? (
               <div>
-                <label htmlFor="prep-time" className="mb-1 block text-xs font-bold uppercase tracking-wide text-slate-500">
+                <label htmlFor="prep-time" className="rs-label mb-1">
                   Preparation estimate (minutes)
                 </label>
                 <Input
@@ -504,7 +573,7 @@ export default function KitchenBoard() {
               </div>
             ) : (
               <div>
-                <label htmlFor="action-reason" className="mb-1 block text-xs font-bold uppercase tracking-wide text-slate-500">
+                <label htmlFor="action-reason" className="rs-label mb-1">
                   {action.type === 'reject' ? 'Rejection reason' : 'Cancellation reason'}
                 </label>
                 <textarea
@@ -514,12 +583,79 @@ export default function KitchenBoard() {
                   rows={3}
                   maxLength={280}
                   required
-                  className="w-full rounded-lg border border-line px-3 py-2 text-sm focus:border-accent focus:outline-none focus:ring-2 focus:ring-orange-100"
+                  className="rs-input"
                   placeholder="Explain why this order cannot continue."
                 />
                 <p className="mt-1 text-right text-[0.68rem] text-muted">{reason.length}/280</p>
               </div>
             )}
+          </form>
+        ) : null}
+      </Modal>
+
+      <Modal
+        open={Boolean(delayTarget)}
+        onClose={() => {
+          if (!delaySaving) {
+            setDelayTarget(null);
+            setDelayError('');
+          }
+        }}
+        title="Report a preparation delay"
+        description="The new estimate is stored on the order. If a delivery partner has not picked it up, the assignment is released and dispatch reschedules it automatically."
+        size="sm"
+        footer={
+          <div className="flex flex-col gap-2 sm:flex-row sm:justify-end">
+            <Button variant="secondary" onClick={() => setDelayTarget(null)} disabled={delaySaving}>Go back</Button>
+            <Button type="submit" form="delay-form" icon={Clock3} loading={delaySaving}>
+              {delaySaving ? 'Saving…' : 'Report delay'}
+            </Button>
+          </div>
+        }
+      >
+        {delayTarget ? (
+          <form id="delay-form" onSubmit={submitDelay} className="space-y-4">
+            {delayError ? <InlineNotice tone="danger">{delayError}</InlineNotice> : null}
+            <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-xs leading-5 text-amber-950">
+              <p className="flex items-center gap-1.5 font-bold">
+                <AlertTriangle className="h-3.5 w-3.5" aria-hidden="true" />
+                Order #{delayTarget.id.slice(0, 8)}
+              </p>
+              <p className="mt-1">
+                Current estimate: {delayTarget.estimated_ready_at ? formatTime(delayTarget.estimated_ready_at) : 'not recorded'}.
+                A delay beyond the promised delivery window is rejected.
+              </p>
+            </div>
+            <div>
+              <label htmlFor="delay-minutes" className="rs-label mb-1">
+                Additional minutes
+              </label>
+              <Input
+                id="delay-minutes"
+                type="number"
+                min={1}
+                max={240}
+                step={1}
+                value={delayMinutes}
+                onChange={(event) => setDelayMinutes(event.target.value)}
+                required
+              />
+            </div>
+            <div>
+              <label htmlFor="delay-reason" className="rs-label mb-1">
+                Reason (optional)
+              </label>
+              <textarea
+                id="delay-reason"
+                value={delayReason}
+                onChange={(event) => setDelayReason(event.target.value)}
+                rows={3}
+                maxLength={280}
+                className="w-full rounded-lg border border-line px-3 py-2 text-sm focus:border-accent focus:outline-none focus:ring-2 focus:ring-orange-100"
+                placeholder="Ingredient issue, equipment delay, unusually high volume…"
+              />
+              <p className="mt-1 text-right text-[0.68rem] text-muted">{delayReason.length}/280</p>
+            </div>
           </form>
         ) : null}
       </Modal>

@@ -11,7 +11,8 @@ import { useAsyncData, useDocumentTitle } from '../../../hooks/useAsyncData.js';
 import { useAuth } from '../../../auth/AuthContext.jsx';
 import { formatDateTime, titleCase } from '../../../lib/format.js';
 import { updateOwnProfile } from '../../../services/profiles.js';
-import { getRider, updateRiderAvailability, updateRiderVehicle } from '../../../services/riders.js';
+import { getRider, updateRiderVehicle } from '../../../services/riders.js';
+import { setRiderAvailability } from '../../../services/lifecycle.js';
 
 const vehicleTypes = ['bike', 'scooter', 'bicycle', 'car', 'on_foot'];
 
@@ -110,7 +111,7 @@ export default function RiderProfile() {
     setError('');
     setSuccess('');
     try {
-      const updated = await updateRiderAvailability(data.id, !data.is_available);
+      const { rider: updated } = await setRiderAvailability(!data.is_available);
       setData(updated);
       setSuccess(updated.is_available ? 'You are now marked available.' : 'You are now marked unavailable.');
     } catch (availabilityError) {
@@ -169,11 +170,11 @@ export default function RiderProfile() {
               <LabeledInput label="Phone" type="tel" autoComplete="tel" value={phone} onChange={(event) => setPhone(event.target.value)} placeholder="+91" />
               <div className="grid gap-3 sm:grid-cols-2">
                 <div>
-                  <p className="text-xs font-bold uppercase tracking-[0.1em] text-slate-500">Email</p>
+                  <p className="text-xs font-medium text-muted">Email</p>
                   <p className="mt-1.5 rounded-lg border border-line bg-slate-50 px-3 py-2.5 text-sm text-slate-600">{user?.email}</p>
                 </div>
                 <div>
-                  <p className="text-xs font-bold uppercase tracking-[0.1em] text-slate-500">Rider ID</p>
+                  <p className="text-xs font-medium text-muted">Rider ID</p>
                   <p className="mt-1.5 truncate rounded-lg border border-line bg-slate-50 px-3 py-2.5 font-mono text-xs text-slate-600">{data.id}</p>
                 </div>
               </div>

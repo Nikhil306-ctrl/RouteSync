@@ -13,6 +13,7 @@ import {
   LayoutDashboard,
   LogOut,
   Menu,
+  Navigation,
   Package,
   ReceiptText,
   Route as RouteIcon,
@@ -44,6 +45,7 @@ const navigation = {
           { to: '/admin/orders', label: 'Orders', icon: ClipboardList },
           { to: '/admin/dispatch', label: 'Scheduling & dispatch', icon: CalendarClock },
           { to: '/admin/routes', label: 'Delivery routes', icon: RouteIcon },
+          { to: '/admin/tracking', label: 'Live tracking', icon: Navigation },
         ],
       },
       {
@@ -161,18 +163,22 @@ function useSignOut() {
   const { signOut } = useAuth();
   const navigate = useNavigate();
   const [signingOut, setSigningOut] = useState(false);
+  const [signOutError, setSignOutError] = useState('');
 
   const handleSignOut = async () => {
     setSigningOut(true);
+    setSignOutError('');
     try {
       await signOut();
       navigate('/login', { replace: true, state: { message: 'You have been signed out.' } });
+    } catch (error) {
+      setSignOutError(error.message ?? 'Sign out failed. Please try again.');
     } finally {
       setSigningOut(false);
     }
   };
 
-  return { signingOut, handleSignOut };
+  return { signingOut, signOutError, handleSignOut };
 }
 
 function SidebarNav({ config, dark, onNavigate }) {
@@ -182,7 +188,7 @@ function SidebarNav({ config, dark, onNavigate }) {
     <nav className="flex-1 space-y-6 overflow-y-auto px-3 py-5" aria-label={`${config.label} navigation`}>
       {config.groups.map((group) => (
         <div key={group.label}>
-          <p className={`px-3 text-[0.62rem] font-extrabold uppercase tracking-[0.17em] ${dark ? 'text-slate-500' : 'text-slate-400'}`}>
+          <p className={`px-3 text-xs font-semibold ${dark ? 'text-slate-500' : 'text-muted'}`}>
             {group.label}
           </p>
           <div className="mt-2 space-y-0.5">
@@ -198,11 +204,11 @@ function SidebarNav({ config, dark, onNavigate }) {
                     `group flex min-h-10 items-center gap-3 rounded-lg px-3 py-2 text-sm font-semibold transition ${
                       isActive
                         ? dark
-                          ? 'bg-white/10 text-white'
-                          : 'bg-orange-50 text-orange-900'
+                          ? 'bg-white/[0.09] text-white shadow-[inset_2px_0_0_#ea6b33]'
+                          : 'bg-warm text-accent-strong shadow-[inset_2px_0_0_#c34a19]'
                         : dark
                           ? 'text-slate-400 hover:bg-white/[0.06] hover:text-white'
-                          : 'text-slate-600 hover:bg-slate-100 hover:text-ink'
+                          : 'text-[#4b585d] hover:bg-[#eef2f0] hover:text-ink'
                     }`
                   }
                 >
@@ -237,7 +243,7 @@ function SidebarNav({ config, dark, onNavigate }) {
 
 function SidebarAccount({ dark }) {
   const { profile, user } = useAuth();
-  const { signingOut, handleSignOut } = useSignOut();
+  const { signingOut, signOutError, handleSignOut } = useSignOut();
 
   return (
     <div className={`border-t px-3 py-4 ${dark ? 'border-white/10' : 'border-line'}`}>
@@ -259,15 +265,17 @@ function SidebarAccount({ dark }) {
           type="button"
           onClick={handleSignOut}
           disabled={signingOut}
-          className={`grid h-8 w-8 place-items-center rounded-lg ${
+          className={`inline-flex min-h-8 items-center gap-1.5 rounded-lg px-2 text-xs font-bold ${
             dark ? 'text-slate-500 hover:bg-white/10 hover:text-white' : 'text-slate-500 hover:bg-slate-100 hover:text-ink'
           }`}
           aria-label="Sign out"
           title="Sign out"
         >
           <LogOut className="h-4 w-4" aria-hidden="true" />
+          <span>{signingOut ? 'Signing out' : 'Sign out'}</span>
         </button>
       </div>
+      {signOutError ? <p className="mt-2 px-2 text-xs text-red-600" role="alert">{signOutError}</p> : null}
     </div>
   );
 }
@@ -316,7 +324,7 @@ function WorkspaceLayout({ role }) {
         ) : null}
       </div>
       <div className={`border-b px-5 py-3 ${dark ? 'border-white/10' : 'border-line'}`}>
-        <p className={`text-[0.62rem] font-extrabold uppercase tracking-[0.18em] ${dark ? 'text-orange-400' : 'text-accent'}`}>
+        <p className={`text-xs font-semibold ${dark ? 'text-orange-300' : 'text-accent'}`}>
           {config.label}
         </p>
       </div>
@@ -348,7 +356,7 @@ function WorkspaceLayout({ role }) {
               <Menu className="h-5 w-5" aria-hidden="true" />
             </button>
             <div className="min-w-0 flex-1">
-              <div className="flex items-center gap-1.5 text-[0.68rem] font-bold uppercase tracking-[0.12em] text-slate-400">
+              <div className="flex items-center gap-1.5 text-xs font-semibold text-muted">
                 <span>{config.shortLabel}</span>
                 <ChevronRight className="h-3 w-3" aria-hidden="true" />
                 <span className="truncate text-slate-600">{current?.label ?? 'Workspace'}</span>
@@ -385,7 +393,6 @@ function RiderLayout() {
   const location = useLocation();
   const current = useMemo(() => findCurrentNav(config, location.pathname), [config, location.pathname]);
   const { profile } = useAuth();
-  const { count } = useCart();
 
   return (
     <div className="min-h-screen bg-canvas pb-20 lg:pb-0">

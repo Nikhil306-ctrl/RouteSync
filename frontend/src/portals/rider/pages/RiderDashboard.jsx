@@ -20,7 +20,8 @@ import RiderAssignmentCard from '../components/RiderAssignmentCard.jsx';
 import { useAsyncData, useDocumentTitle } from '../../../hooks/useAsyncData.js';
 import { useAuth } from '../../../auth/AuthContext.jsx';
 import { formatDate, formatDateTime, formatTime } from '../../../lib/format.js';
-import { getRider, listRiderAssignments, listRiderShifts, updateRiderAvailability } from '../../../services/riders.js';
+import { getRider, listRiderAssignments, listRiderShifts } from '../../../services/riders.js';
+import { setRiderAvailability } from '../../../services/lifecycle.js';
 
 export default function RiderDashboard() {
   useDocumentTitle('Delivery partner overview');
@@ -67,8 +68,8 @@ export default function RiderDashboard() {
     setToggling(true);
     setToggleError('');
     try {
-      const updated = await updateRiderAvailability(data.rider.id, !data.rider.is_available);
-      setData((current) => ({ ...current, rider: updated }));
+      const response = await setRiderAvailability(!data.rider.is_available);
+      setData((current) => ({ ...current, rider: response.rider }));
     } catch (availabilityError) {
       setToggleError(availabilityError.message ?? 'Unable to update availability.');
     } finally {

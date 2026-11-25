@@ -19,22 +19,32 @@ import { useAsyncData, useDocumentTitle } from '../../../hooks/useAsyncData.js';
 import { formatDateTime, formatWindow } from '../../../lib/format.js';
 import { listOrders, orderMetrics } from '../../../services/orders.js';
 import { listAdminAssignments, listRidersWithProfiles } from '../../../services/riders.js';
+import { fetchAdminRiderTracking } from '../../../services/lifecycle.js';
 import { listAdminRestaurants } from '../../../services/restaurants.js';
 import { listConstraintViolations, listSchedulingRuns } from '../../../services/admin.js';
 
 export default function AdminDashboard() {
   useDocumentTitle('Operations overview');
   const { data, loading, error, reload } = useAsyncData(async () => {
-    const [orders, riders, restaurants, runs, violations, assignments] = await Promise.all([
+    const [orders, riders, restaurants, runs, violations, assignments, tracking] = await Promise.all([
       listOrders({ limit: 200 }),
       listRidersWithProfiles(),
       listAdminRestaurants(),
       listSchedulingRuns(20),
       listConstraintViolations(100),
       listAdminAssignments(100),
+      fetchAdminRiderTracking(),
     ]);
 
-    return { orders, riders, restaurants, runs, violations, assignments };
+    return {
+      orders,
+      riders,
+      restaurants,
+      runs,
+      violations,
+      assignments,
+      tracking: tracking.riders ?? [],
+    };
   }, []);
 
   if (loading) {
@@ -52,6 +62,7 @@ export default function AdminDashboard() {
   const activeRestaurants = data.restaurants.filter((restaurant) => restaurant.is_active).length;
   const openViolations = data.violations.filter((violation) => !violation.is_resolved).length;
   const currentAssignments = data.assignments.filter((assignment) => assignment.is_current);
+  const trackingSharing = data.tracking.filter((rider) => rider.location && !rider.location.stale).length;
   const recentOrders = [...data.orders].sort((a, b) => new Date(b.created_at) - new Date(a.created_at)).slice(0, 6);
 
   return (
@@ -134,8 +145,8 @@ export default function AdminDashboard() {
                 },
                 {
                   label: 'Live tracking',
-                  value: 'Authorized tracking surface pending',
-                  tone: 'text-slate-600',
+                  value: `${trackingSharing} recent location${trackingSharing === 1 ? '' : 's'} · ${data.tracking.length} partners`,
+                  tone: trackingSharing ? 'text-emerald-700' : 'text-slate-600',
                   icon: MapPin,
                 },
                 {
@@ -172,7 +183,7 @@ export default function AdminDashboard() {
                   ['Cancelled', metrics.cancelled],
                 ].map(([label, value]) => (
                   <div key={label} className="rounded-lg bg-slate-50 p-3">
-                    <dt className="text-[0.65rem] font-bold uppercase tracking-wide text-slate-500">{label}</dt>
+                    <dt className="text-xs font-medium text-muted">{label}</dt>
                     <dd className="mt-1 font-display text-xl font-bold text-ink">{value}</dd>
                   </div>
                 ))}
@@ -186,17 +197,17 @@ export default function AdminDashboard() {
       </div>
 
       <div className="grid gap-4 md:grid-cols-3">
-        <Link to="/admin/riders" className="group rounded-xl border border-line bg-white p-4 transition hover:border-orange-200 hover:bg-warm">
+        <Link to="/admin/riders" className="rs-panel group p-4 transition hover:border-orange-200 hover:bg-warm">
           <Bike className="h-5 w-5 text-accent" aria-hidden="true" />
           <p className="mt-3 text-sm font-bold text-ink">Delivery partner capacity</p>
           <p className="mt-1 text-xs leading-5 text-muted">{availableRiders} available · {data.riders.length - availableRiders} unavailable</p>
         </Link>
-        <Link to="/admin/restaurants" className="group rounded-xl border border-line bg-white p-4 transition hover:border-orange-200 hover:bg-warm">
+        <Link to="/admin/restaurants" className="rs-panel group p-4 transition hover:border-orange-200 hover:bg-warm">
           <Store className="h-5 w-5 text-accent" aria-hidden="true" />
           <p className="mt-3 text-sm font-bold text-ink">Restaurant network</p>
           <p className="mt-1 text-xs leading-5 text-muted">{activeRestaurants} active kitchens in the catalogue</p>
         </Link>
-        <Link to="/admin/violations" className="group rounded-xl border border-line bg-white p-4 transition hover:border-orange-200 hover:bg-warm">
+        <Link to="/admin/violations" className="rs-panel group p-4 transition hover:border-orange-200 hover:bg-warm">
           <TriangleAlert className="h-5 w-5 text-accent" aria-hidden="true" />
           <p className="mt-3 text-sm font-bold text-ink">Constraint review</p>
           <p className="mt-1 text-xs leading-5 text-muted">{openViolations} unresolved · {data.violations.length} total records</p>

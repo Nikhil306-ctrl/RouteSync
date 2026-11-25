@@ -29,6 +29,8 @@ import {
   assignRider,
   fetchDispatchQueue,
   fetchEligibleRiders,
+  runScheduling,
+  fetchSchedulingRuns,
 } from '../../../services/lifecycle.js';
 
 const QUEUE_FILTERS = [
@@ -114,6 +116,9 @@ export default function AdminDispatch() {
   const [assigning, setAssigning] = useState(false);
   const [assignError, setAssignError] = useState('');
   const [assignMessage, setAssignMessage] = useState('');
+  const [schedulingTarget, setSchedulingTarget] = useState(null);
+  const [scheduleResult, setScheduleResult] = useState(null);
+  const { data: runData, loading: runsLoading, error: runsError, reload: reloadRuns } = useAsyncData(() => fetchSchedulingRuns(), []);
 
   const { data, loading, error, reload, reloadQuiet } = useAsyncData(
     () => fetchDispatchQueue(),
@@ -231,6 +236,18 @@ export default function AdminDispatch() {
     }
   };
 
+  const startScheduling = async (ids) => {
+    if (schedulingTarget) return;
+    setSchedulingTarget(ids?.[0] ?? 'batch');
+    setAssignError('');
+    try {
+      setScheduleResult(await runScheduling(ids));
+      reloadQuiet();
+      reloadRuns();
+    } catch (failure) { setAssignError(failure.message); }
+    finally { setSchedulingTarget(null); }
+  };
+
   if (loading) return <LoadingState rows={7} label="Loading the dispatch workspace" />;
   if (error) return <ErrorState error={error} onRetry={reload} />;
 
@@ -239,10 +256,11 @@ export default function AdminDispatch() {
       <PageHeader
         eyebrow="Scheduling control"
         title="Scheduling & dispatch"
-        description="Manual assignment queue for accepted orders. Eligibility is checked again inside the database transaction, so a stale candidate is rejected instead of overriding a conflict."
+        description="Constraint-based scheduling proposals, rider responses and controlled dispatch. Geographic route estimates are not road navigation."
         actions={
           <>
             <LinkButton to="/admin/orders" variant="secondary" icon={ArrowRight}>Orders</LinkButton>
+            <Button loading={schedulingTarget === 'batch'} disabled={Boolean(schedulingTarget)} onClick={() => startScheduling()} icon={RouteIcon}>Batch schedule</Button>
             <Button variant="secondary" icon={RefreshCw} onClick={reload}>Refresh</Button>
           </>
         }
@@ -257,11 +275,12 @@ export default function AdminDispatch() {
         <StatCard label="Assigned" value={summary.assigned} helper={`${summary.needsAction} order${summary.needsAction === 1 ? '' : 's'} need action`} icon={UserCheck} tone="green" />
       </div>
 
-      <InlineNotice tone="neutral" title="Manual assignment boundary">
-        This workspace lists the pending assignment queue and eligible delivery partners. It does not run a CSP
-        solver, invent a route or fabricate an optimization score. The database re-checks profile status, shift
-        coverage, capacity and the expected current assignment when an assignment is submitted.
-      </InlineNotice>
+      {scheduleResult ? <InlineNotice tone="neutral" title={`Scheduling ${scheduleResult.metrics?.termination ?? 'complete'}`}>
+        {scheduleResult.assigned?.length ?? 0} assigned · {scheduleResult.unscheduled?.length ?? 0} unscheduled · {scheduleResult.metrics?.search_nodes ?? 0} nodes · {scheduleResult.metrics?.backtracks ?? 0} backtracks · {scheduleResult.metrics?.execution_ms ?? 0} ms.
+      </InlineNotice> : null}
+      <Card><CardHeader title="Recent scheduling runs" description="Execution metrics from persisted solver runs" /><CardBody>
+        {runsLoading ? <p className="text-xs text-muted">Loading scheduling runs…</p> : runsError ? <div className="flex items-center justify-between gap-3"><p className="text-xs text-red-700">{runsError.message}</p><Button size="sm" variant="secondary" onClick={reloadRuns}>Retry</Button></div> : (runData?.runs ?? []).length ? <ul className="space-y-2 text-xs">{runData.runs.slice(0, 8).map((run) => <li key={run.id} className="rounded-lg border border-line p-2">#{run.id.slice(0, 8)} · {run.status} · {formatDateTime(run.created_at)} · {run.metrics?.feasible_assignments ?? 0} assigned · {run.metrics?.unscheduled_orders ?? 0} unscheduled · {run.metrics?.termination ?? '—'}</li>)}</ul> : <p className="text-xs text-muted">No scheduling runs yet.</p>}
+      </CardBody></Card>
 
       <Card>
         <CardHeader
@@ -318,6 +337,7 @@ export default function AdminDispatch() {
                     <TD>
                       <Badge variant={current.tone}>{current.label}</Badge>
                       <p className="mt-1 max-w-[180px] truncate text-xs text-muted">{current.detail}</p>
+                      {order.current_assignment ? <p className="text-xs text-muted">{order.current_assignment.scheduling_explanation?.source ?? 'manual'} · {order.current_assignment.scheduling_explanation?.score?.toFixed?.(3) ?? '—'}</p> : <Button size="sm" variant="secondary" loading={schedulingTarget === order.id} disabled={Boolean(schedulingTarget)} onClick={(event) => { event.stopPropagation(); startScheduling([order.id]); }}>Run scheduler</Button>}
                     </TD>
                     <TD className="text-xs tabular-nums text-slate-600">{order.reassignment_count ?? 0}</TD>
                     <TD>
@@ -393,7 +413,7 @@ export default function AdminDispatch() {
 
             <div className="grid gap-3 sm:grid-cols-2">
               <div className="rounded-lg border border-line bg-slate-50 p-3.5">
-                <p className="text-[0.65rem] font-extrabold uppercase tracking-[0.12em] text-slate-500">Order state</p>
+                <p className="text-xs font-semibold text-muted">Order state</p>
                 <div className="mt-2 flex flex-wrap items-center gap-2">
                   <StatusBadge status={selectedOrder.status} />
                   <StatusBadge status={selectedOrder.priority} dot={false} />
@@ -403,7 +423,7 @@ export default function AdminDispatch() {
                 </p>
               </div>
               <div className="rounded-lg border border-line bg-slate-50 p-3.5">
-                <p className="text-[0.65rem] font-extrabold uppercase tracking-[0.12em] text-slate-500">Planned timing</p>
+                <p className="text-xs font-semibold text-muted">Planned timing</p>
                 {eligibleData?.plan ? (
                   <div className="mt-2 space-y-1 text-xs text-slate-700">
                     <p>Pickup {formatDateTime(eligibleData.plan.pickupAt)}</p>
@@ -426,8 +446,9 @@ export default function AdminDispatch() {
                   {selectedOrder.current_assignment.rider?.full_name || selectedOrder.current_assignment.rider?.email || 'Delivery partner'}
                   {selectedOrder.current_assignment.reason ? ` · ${selectedOrder.current_assignment.reason}` : ''}
                 </p>
+                {selectedOrder.current_assignment.scheduling_explanation ? <p className="mt-2 text-xs text-muted">{selectedOrder.current_assignment.scheduling_explanation.source} · score {Number(selectedOrder.current_assignment.scheduling_explanation.score).toFixed(3)} · batch {selectedOrder.current_assignment.scheduling_explanation.batch_size} · pickup {formatDateTime(selectedOrder.current_assignment.planned_pickup_at)} · delivery {formatDateTime(selectedOrder.current_assignment.planned_delivery_at)} · {JSON.stringify(selectedOrder.current_assignment.scheduling_explanation.breakdown)}</p> : null}
                 <div>
-                  <label htmlFor="assign-reason" className="mt-3 block text-xs font-bold uppercase tracking-wide text-slate-500">
+                  <label htmlFor="assign-reason" className="rs-label mt-3">
                     Reassignment reason
                   </label>
                   <input

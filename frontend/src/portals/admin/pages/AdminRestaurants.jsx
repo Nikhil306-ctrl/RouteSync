@@ -251,7 +251,7 @@ export default function AdminRestaurants() {
             </dl>
 
             <div>
-              <p className="text-xs font-bold uppercase tracking-[0.12em] text-slate-500">Description</p>
+              <p className="text-xs font-semibold text-muted">Description</p>
               <p className="mt-1.5 text-sm leading-6 text-slate-700">{selected.description || 'No description recorded.'}</p>
             </div>
 

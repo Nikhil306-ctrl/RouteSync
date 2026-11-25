@@ -113,7 +113,7 @@ function RoleShowcase() {
   const [activeIndex, setActiveIndex] = useState(0);
   return (
     <section className="network-section" id="roles" aria-labelledby="network-title">
-      <div className="network-heading"><span className="rs-eyebrow">The platform</span><h2 id="network-title">One connected network.</h2><p>Four focused portals, connected to the same delivery journey.</p></div>
+      <div className="network-heading"><h2 id="network-title">One connected network.</h2><p>Four focused portals, connected to the same delivery journey.</p></div>
       <div className="role-tabs" role="tablist" aria-label="RouteSync portals">
         {roles.map((role, index) => (
           <button type="button" role="tab" aria-selected={activeIndex === index} key={role.id} onClick={() => setActiveIndex(index)}>{role.name}</button>

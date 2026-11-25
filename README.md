@@ -1,123 +1,253 @@
-# RouteSync
+<div align="center">
+  <img src="docs/assets/routesync-hero.svg" alt="RouteSync branded banner showing a route from restaurant to rider to customer" width="100%" />
+  <h3>Smart Constraint-Based Food Delivery Management System</h3>
+  <p>Four cooperating engines. One coordinated delivery network.</p>
 
-![Node](https://img.shields.io/badge/Node-%3E%3D22.12.0-339933?logo=node.js&logoColor=white)
-![Cloudflare%20Workers](https://img.shields.io/badge/Cloudflare_Workers-Hono-F38020?logo=cloudflare&logoColor=white)
-![React](https://img.shields.io/badge/React-19-61DAFB?logo=react&logoColor=black)
-![Vite](https://img.shields.io/badge/Vite-7-646CFF?logo=vite&logoColor=white)
-![Supabase](https://img.shields.io/badge/Supabase-Postgres%20%2B%20Auth%20%2B%20RLS-3FCF8E?logo=supabase&logoColor=white)
-![License](https://img.shields.io/badge/License-Academic-lightgrey)
+  <p>
+    <a href="https://routesync.vijapurnikhil61.workers.dev"><img src="https://img.shields.io/badge/Live-demo-F38020?logo=cloudflare&logoColor=white" alt="Live demo" /></a>
+    <a href="https://github.com/Nikhil306-ctrl/RouteSync"><img src="https://img.shields.io/badge/Repository-GitHub-181717?logo=github&logoColor=white" alt="GitHub repository" /></a>
+  </p>
 
-RouteSync is an academic, constraint-based food delivery operations platform built around **four cooperating engines** (validation, scheduling optimization, resource management, communication/tracking). It combines a React + Vite frontend, a Hono API running on Cloudflare Workers (with static asset hosting), and Supabase (PostgreSQL + Auth + RLS) for trusted, role-scoped workflows.
-
-> This repository is prepared for academic demonstration. Some advanced live verification remains incomplete due to an intermittent `persist_schedule` RPC timeout (see **Known limitations**).
-
----
-
-## Project overview and problem statement
-
-Food delivery coordination requires consistent handling of restaurant availability, delivery windows, rider capacity/shifts, route feasibility, and auditable order state changes. RouteSync models this as a **constraint-first** system:
-
-- Orders move through explicit lifecycle states with server-side validation and history.
-- Scheduling produces feasible rider assignments/routes under hard constraints (time windows, capacity, shifts, coordinates, ordering constraints enforced in SQL/RPCs).
-- The UI is split into four portals (Customer, Restaurant, Rider/Delivery Partner, Admin) with role-based access enforced by Supabase Auth + RLS and trusted server endpoints.
+  <p>
+    <img src="https://img.shields.io/badge/Node-%3E%3D22.12.0-339933?logo=node.js&logoColor=white" alt="Node.js 22.12 or newer" />
+    <img src="https://img.shields.io/badge/React-19-61DAFB?logo=react&logoColor=black" alt="React 19" />
+    <img src="https://img.shields.io/badge/Vite-7-646CFF?logo=vite&logoColor=white" alt="Vite 7" />
+    <img src="https://img.shields.io/badge/Hono-Cloudflare%20Workers-F38020?logo=cloudflare&logoColor=white" alt="Hono on Cloudflare Workers" />
+    <img src="https://img.shields.io/badge/Supabase-Postgres%20%2B%20Auth%20%2B%20RLS-3FCF8E?logo=supabase&logoColor=white" alt="Supabase PostgreSQL Auth and RLS" />
+    <img src="https://img.shields.io/badge/Tests-116%2F116%20local-2EA043?logo=github&logoColor=white" alt="116 out of 116 local tests passed" />
+    <img src="https://img.shields.io/badge/Status-Academic%20prototype-lightgrey" alt="Academic prototype" />
+  </p>
+</div>
 
 ---
 
-## Technology stack
+## Overview
 
-**Frontend**
-- React 19, React Router 7, Vite 7
-- Tailwind CSS (via `@tailwindcss/vite`) + custom UI components
-- Supabase JS client (`@supabase/supabase-js`)
+RouteSync is an academic food-delivery operations platform that coordinates restaurants, riders, customers, and administrators through **four role-specific portals** and **four cooperating engines**. It models delivery coordination as a constraint-first problem: order eligibility, preparation windows, rider shifts, capacity, route feasibility, and trusted state transitions are checked before assignments are persisted.
 
-**Backend (Worker/API)**
-- Cloudflare Workers + Hono (`backend/wrangler.jsonc`, `backend/src/index.js`)
-- Supabase server clients (user-scoped by default; privileged client used only in explicitly authorized server flows)
-- Four engine modules under `backend/src/engines/*`
+The repository contains a React + Vite frontend, a Hono API deployed on Cloudflare Workers with static asset hosting, and a Supabase backend using PostgreSQL, Auth, Row Level Security, RPCs, and optional Realtime publication.
 
-**Database & security**
-- Supabase PostgreSQL with migrations in `supabase/migrations/`
-- Row Level Security (RLS) enabled across application tables, least-privilege grants
-- Trusted RPCs/functions for lifecycle and scheduling persistence (browser roles cannot directly write protected rows)
+> **Academic demonstration status:** RouteSync is a working prototype, not a production-ready commercial platform. Some advanced live verification remains incomplete; see [Known limitations](#known-limitations).
 
-**Tooling**
-- Node.js **>= 22.12.0** (verified in this repo on Node 25.x in development)
-- GitHub Actions CI (`.github/workflows/ci.yml`) for install, local tests, production build
+### Problem → approach → outcome
 
----
-
-## Four user portals and capabilities
-
-| Portal | Route(s) (high level) | Intended capabilities (as implemented) |
+| Problem | RouteSync approach | Outcome |
 |---|---|---|
-| Customer | `/customer/*`, checkout/tracking flows | Browse restaurants/menus, cart/checkout, place orders, view orders/tracking, manage profile/addresses/notifications (role-gated). |
-| Restaurant | `/restaurant/*` | Restaurant operations views (dashboard/menu/profile/kitchen-related screens), update order preparation flow via trusted APIs/RPCs where applicable. |
-| Rider / Delivery Partner | `/delivery-partner/*` (alias `/delivery` redirects) | View assignments/route/history/shifts/profile, update availability/location-related flows through trusted server endpoints where applicable. |
-| Admin | `/admin/*` | Dispatch and scheduling tools, order/restaurant/rider oversight, live tracking views, rescheduling/violations/audit-oriented screens (role-gated). |
-
-Roles are resolved from trusted profile data (`profiles.role`) after Supabase Auth sign-in; client metadata is not trusted for authorization.
+| Delivery state can drift across customer, restaurant, rider, and admin views. | Trusted server-side lifecycle transitions with history and role-scoped reads. | Auditable order history and consistent portal state. |
+| Manual dispatch ignores time windows, shifts, capacity, and geography. | E1–E4 constraint solving with bounded search and trusted persistence. | Feasible rider assignments and route plans under explicit constraints. |
+| Browser clients must not bypass operational rules. | Supabase Auth, RLS, and service-role RPCs for protected writes. | Role-gated workflows with server-side enforcement. |
+| Customers and riders need timely operational signals. | E4 communication and tracking with notifications and polling fallback. | Shared progress across four portals. |
 
 ---
 
-## Four-engine architecture (Mermaid)
+## Delivery journey
+
+The animation below is an **illustrated cinematic delivery journey**, not actual application footage. It depicts the operational path from order placement to completed delivery.
+
+<div align="center">
+  <img src="docs/assets/delivery-journey.gif" alt="Illustrated cinematic RouteSync delivery journey showing a scooter moving through restaurant preparation, scheduling, rider assignment, tracking, and completion" width="348" style="max-width:100%;height:auto;" />
+</div>
+
+1. **Customer order placed** — the order enters the trusted lifecycle.
+2. **Restaurant preparation** — the kitchen confirms the preparation window.
+3. **Constraint-based scheduling** — E1–E4 solve feasible assignments.
+4. **Rider assignment** — the assignment is committed through a trusted RPC.
+5. **Delivery tracking** — live position is shared with the customer.
+6. **Completed delivery** — the order state closes with history retained.
+
+---
+
+## Portal showcase
+
+Screenshots are genuine portal captures supplied in the repository. Routes are shown at a high level; actual access is enforced by Supabase Auth, trusted profile roles, and RLS.
+
+<table>
+  <tr>
+    <td align="center" width="50%" valign="top">
+      <strong>Customer portal</strong><br />
+      <img src="frontend/public/screenshots/customer.png" alt="RouteSync customer portal" width="100%" />
+      <br /><small>Browse, order, and track.</small>
+    </td>
+    <td align="center" width="50%" valign="top">
+      <strong>Restaurant portal</strong><br />
+      <img src="frontend/public/screenshots/restaurant.png" alt="RouteSync restaurant portal" width="100%" />
+      <br /><small>Menu and preparation flow.</small>
+    </td>
+  </tr>
+  <tr>
+    <td align="center" width="50%" valign="top">
+      <strong>Rider / delivery partner portal</strong><br />
+      <img src="frontend/public/screenshots/rider.png" alt="RouteSync rider portal" width="100%" />
+      <br /><small>Assignments, route, and history.</small>
+    </td>
+    <td align="center" width="50%" valign="top">
+      <strong>Admin dispatch portal</strong><br />
+      <img src="frontend/public/screenshots/admin.png" alt="RouteSync admin dispatch portal" width="100%" />
+      <br /><small>Scheduling, oversight, and tracking.</small>
+    </td>
+  </tr>
+</table>
+
+| Portal | Route family | Implemented capabilities |
+|---|---|---|
+| Customer | `/customer/*`, checkout and tracking flows | Browse restaurants and menus, cart and checkout, place orders, view order history and tracking, manage profile, addresses, and notifications. |
+| Restaurant | `/restaurant/*` | Dashboard, menu, profile, and preparation workflow through trusted APIs/RPCs. |
+| Rider / Delivery Partner | `/delivery-partner/*` with `/delivery` redirect | Assignments, route, history, shifts, profile, and availability/location updates through trusted endpoints. |
+| Admin | `/admin/*` | Dispatch, scheduling, orders, restaurants, riders, live tracking, rescheduling, violations, and audit-oriented views. |
+
+Roles are resolved from trusted `profiles.role` data after Supabase Auth sign-in. Client-supplied metadata is not trusted for authorization.
+
+---
+
+## Core capabilities
+
+- **Constraint-first scheduling** — validated order batches, bounded rider search, precedence-preserving stop sequences, and trusted persistence.
+- **Geographic planning** — Haversine distance over a complete estimated graph with Dijkstra shortest-path search; OSRM road routes and Leaflet display in the frontend.
+- **Trusted order lifecycle** — protected RPCs for quote, create, transition, assign, and respond flows, with status-event and assignment-event history.
+- **Role-scoped security** — Supabase Auth, RLS, least-privilege grants, and service-role-only write paths for sensitive operations.
+- **Four-portal operations** — customer ordering, restaurant preparation, rider assignment, and admin dispatch in one system.
+- **Communication and tracking** — notifications, assignment events, rider location reporting, customer-facing tracking, and capped polling fallback.
+- **Operational diagnostics** — health probe, scheduling metrics, rejection reasons, constraint violations, and audit-oriented records.
+- **Interactive landing page** — React, Tailwind CSS, and a Three.js delivery scene with a persistent scooter asset.
+
+---
+
+## Four-engine architecture
 
 ```mermaid
 flowchart LR
-  subgraph Client["Frontend (React + Vite)"]
-    UI["Portals: Customer / Restaurant / Rider / Admin"]
+  subgraph Client["Frontend — React + Vite + Tailwind"]
+    UI["Customer / Restaurant / Rider / Admin portals"]
+    MAP["Leaflet + OpenStreetMap + OSRM road routing"]
+    LAND["Three.js landing scene"]
   end
 
-  subgraph Edge["Cloudflare Worker (Hono)"]
-    API["/api routes\n(auth, admin, customer, restaurant, rider, health)"]
-    Cron["Scheduled handler\n(runPendingSchedulingOnce)"]
-    E1["E1 Scheduling Optimization"]
-    E2["E2 Data Validation / persistence helpers"]
-    E3["E3 Resource Management"]
-    E4["E4 Communication & Tracking"]
+  subgraph Edge["Cloudflare Worker — Hono API"]
+    API["/api health, auth, admin, customer, restaurant, rider"]
+    E1["E1 — Scheduling optimization"]
+    E2["E2 — Data validation"]
+    E3["E3 — Resource management"]
+    E4["E4 — Communication and tracking"]
+    CRON["Scheduled handler — disabled: crons = []"]
   end
 
   subgraph Data["Supabase"]
-    PG["PostgreSQL + RLS + RPCs"]
-    Auth["Supabase Auth"]
+    AUTH["Auth + profiles.role"]
+    PG["PostgreSQL + RLS + trusted RPCs"]
+    RT["Realtime publication (optional)"]
   end
 
   UI -->|HTTPS + JWT| API
+  UI --> MAP
+  UI --> LAND
+  API --> AUTH
+  API --> PG
+  API --> E1
   API --> E2
   API --> E3
-  API --> E1
   API --> E4
-  Cron --> API
+  CRON -.->|intentionally disabled| API
   E1 --> E2
+  E3 --> E1
   E2 --> PG
   E3 --> PG
   E4 --> PG
-  API --> Auth
-  API --> PG
+  E4 -.-> RT
+  RT -.-> UI
 ```
+
+### Engine responsibilities
+
+| Engine | Academic owner | Responsibility |
+|---|---|---|
+| **E1 — Smart Scheduling & Optimization** | Nikhita Rajesh Patil | Constraint search, route sequencing, weighted scoring, and bounded optimization. |
+| **E2 — Data & Validation** | Nikhil Vijapur | Order eligibility, timing/coordinate checks, persistence contracts, and validation rejections. |
+| **E3 — Resource Management** | Sakshi Magadum | Rider availability, verification, shifts, capacity, and resource state. |
+| **E4 — Communication & Tracking** | Ritvik Shinde | Notifications, assignment events, tracking signals, and cross-portal updates. |
+
+### Scheduling flow
 
 ```mermaid
 flowchart TD
-  A["Scheduling request\n(admin manual / scheduled trigger)"] --> B["E2: load & validate orders\n(time windows, prep, coordinates, eligibility)"]
-  B --> C["E3: load riders/resources\n(availability, verified, shifts, capacity, locations)"]
-  C --> D["E1: solve feasible assignments/routes\n(backtracking search + constraints)"]
-  D --> E["E2: build persistence payload\n+ contract checks"]
-  E --> F["Postgres RPC\npersist_schedule / override_schedule (trusted)"]
-  F --> G["DB state: assignments, routes, stops,\nruns, violations, notifications (as designed)"]
-  G --> H["E4: scheduling outcome / tracking signals\n(used by API responses & UI)"]
+  A["Scheduling request<br/>admin manual path or disabled trigger"] --> B["E2: load and validate orders<br/>status, windows, readiness, coordinates"]
+  B --> C["E3: load riders and resources<br/>active, verified, available, shifts, capacity"]
+  C --> D["E1: solve feasible assignments<br/>MRV, forward checking, branch and bound"]
+  D --> E["E2: build persistence payload<br/>and contract checks"]
+  E --> F["Trusted Postgres RPC<br/>persist_schedule or override_schedule"]
+  F --> G["Assignments, routes, stops, runs,<br/>violations, and notifications"]
+  G --> H["E4: outcome and tracking signals<br/>API responses and portals"]
 ```
 
 ---
 
-## Database architecture and ER diagram (high level)
+## Constraint-based scheduling and optimization
 
-Migrations define the schema under `supabase/migrations/` (enums, core tables, operations tables, functions/triggers, RLS, grants, lifecycle/scheduling/phase migrations). Core domains include:
+E1 models scheduling as a constraint-satisfaction problem. Orders are variables, feasible rider/route placements are domains, and hard constraints are evaluated before weighted scoring.
 
-- Identity/profile: `profiles`, `riders`, `rider_shifts`
-- Restaurants/menu: `restaurants`, `menu_categories`, `menu_items`
-- Customers: `customer_addresses`
-- Orders: `orders`, `order_items`
-- Fulfillment/scheduling: `assignments`, `delivery_routes`, `route_stops`, `rider_locations`, `scheduling_runs`, `constraint_violations`
-- Messaging/audit: `notifications`, `audit_logs`
+### Algorithm highlights
+
+- **Bounded search** — configurable limits for search nodes, execution time, and candidate evaluation.
+- **Greedy incumbent** — retains a useful feasible assignment set when the search is bounded.
+- **MRV and forward checking** — orders with the fewest feasible placements are considered first.
+- **Branch and bound** — prunes branches that cannot improve the current assignment count/cost.
+- **Batch limit** — at most three orders per rider batch in the current implementation.
+- **Route sequencing** — precedence-preserving pickup/dropoff sequences with deadline and shift checks.
+- **Weighted scoring** — approach distance, route distance, completion time, deadline slack, rider workload, and detour cost.
+- **Geographic estimate** — complete Haversine graph, Dijkstra shortest paths, provisional `18 km/h` speed, and two minutes per stop.
+- **Frontend road routing** — public OSRM demo server with a geographic fallback; not a guarantee of live traffic-aware routing.
+
+### Hard constraints
+
+Hard constraints are enforced in application logic and/or database RPCs as implemented:
+
+- role and authorization checks;
+- eligible order status, preparation readiness, and delivery window;
+- valid pickup/dropoff coordinates and addresses;
+- rider active, verified, and available state;
+- valid current shift coverage for planned pickup and delivery;
+- rider concurrency and capacity limits;
+- no silent rewrite of existing committed routes;
+- batch compatibility and detour limits;
+- idempotency and duplicate-assignment protections;
+- route/assignment consistency checks in SQL.
+
+Exact behavior is defined in `backend/src/engines/*`, `backend/src/lib/scheduling*.js`, and `supabase/migrations/*`.
+
+---
+
+## Order lifecycle
+
+Order transitions are handled through trusted server-side flows in `backend/src/lib/orderLifecycle.js` and the lifecycle migration. The system records status events, assignment events, notifications, and scheduling effects.
+
+```mermaid
+flowchart LR
+  Q["Draft / quoted"] --> P["Pending"]
+  P --> C["Confirmed"]
+  C --> PR["Preparing"]
+  PR --> R["Ready"]
+  R --> A["Assigned"]
+  A --> PU["Picked up"]
+  PU --> OFD["Out for delivery"]
+  OFD --> D["Delivered"]
+  P -.-> X["Cancelled or rejected"]
+  C -.-> X
+  PR -.-> X
+  R -.-> X
+  A -.-> RS["Reassigned before pickup"]
+  RS -.-> R
+```
+
+- Browser roles cannot directly write protected order status rows.
+- Assignment responses revalidate rider state, shift coverage, and capacity on acceptance.
+- Reassignment before pickup restores the order to `ready` and preserves history.
+- Late deliveries remain recordable after pickup; the lifecycle does not block them solely on the planned deadline.
+- See `docs/PHASE5_ORDER_LIFECYCLE.md` for the operator runbook and verification SQL.
+
+---
+
+## Database architecture
+
+Migrations under `supabase/migrations/` define enums, core tables, operations tables, functions, triggers, RLS policies, and grants. Realtime is an optional enhancement; capped polling remains the required fallback.
 
 ```mermaid
 erDiagram
@@ -139,93 +269,101 @@ erDiagram
   PROFILES ||--o{ NOTIFICATIONS : receives
 ```
 
-For exact columns, constraints, and policies, refer to SQL files in `supabase/migrations/` and `docs/PHASE3_DATABASE_AUTH.md`, `docs/PHASE5_ORDER_LIFECYCLE.md`.
+Key domains:
+
+- **Identity/profile:** `profiles`, `riders`, `rider_shifts`
+- **Restaurant/menu:** `restaurants`, `menu_categories`, `menu_items`
+- **Customers:** `customer_addresses`
+- **Orders:** `orders`, `order_items`, `order_status_events`
+- **Fulfillment:** `assignments`, `assignment_events`, `delivery_routes`, `route_stops`, `rider_locations`, `scheduling_runs`, `constraint_violations`
+- **Messaging/audit:** `notifications`, `audit_logs`
+
+For exact columns, constraints, and policies, refer to the SQL migration files and `docs/PHASE3_DATABASE_AUTH.md`.
 
 ---
 
-## Constraint-based scheduling algorithm and hard constraints
+## Technology stack
 
-- **E1 (optimization)** performs a constraint-driven search (backtracking with pruning/limits as implemented) over feasible rider/route assignments for eligible orders.
-- **E2 (validation)** filters ineligible orders (status/window/readiness/coordinates/restaurant validity and related checks) before solving and validates persistence contracts.
-- **E3 (resources)** loads rider eligibility inputs (active/verified/available, location presence where required, usable shift windows, current load vs capacity).
-- **Persistence** is performed through trusted Postgres RPCs (e.g. scheduling persistence/override paths) designed to be atomic and enforce invariants server-side.
-
-**Hard constraints (enforced in application logic and/or database/RPCs, as implemented):** role/authorization checks, order eligibility by status and timing, valid coordinates and addresses for routing/stops, rider verification/availability/shift coverage, rider concurrency/capacity limits, idempotency/duplicate-assignment protections in flows, and route/assignment consistency checks in SQL (see migrations such as constraint/scheduling and phase 7/8 migrations). Exact behavior is defined in `backend/src/engines/*`, `backend/src/lib/scheduling*.js`, and `supabase/migrations/*`.
-
----
-
-## Order lifecycle (summary)
-
-Order state transitions are handled through trusted server-side flows (see `backend/src/lib/orderLifecycle.js`, `docs/PHASE5_ORDER_LIFECYCLE.md`). The system records lifecycle/history and scheduling-related effects (assignments, routes/stops updates, notifications) according to implemented RPCs and triggers/migrations. Use the in-app portals and API routes under `/api/*` as the operational interface.
+| Layer | Technologies |
+|---|---|
+| Frontend | React 19, React Router 7, Vite 7, Tailwind CSS via `@tailwindcss/vite`, Supabase JS client |
+| Visualization | Three.js landing scene, Leaflet, OpenStreetMap tiles, OSRM demo routing |
+| API | Hono on Cloudflare Workers, static asset hosting, role-scoped `/api/*` routes |
+| Database | Supabase PostgreSQL, Auth, RLS, trusted RPCs, optional Realtime publication |
+| Scheduling | Constraint satisfaction, bounded backtracking, MRV, forward checking, branch and bound, Dijkstra geographic routing |
+| Tooling | Node.js `>=22.12.0`, npm workspaces via scripts, GitHub Actions CI |
 
 ---
 
-## API overview (implemented routes)
+## API overview
 
-API is mounted under `/api` (see `backend/src/routes/*`, `backend/src/app.js`). High-level groups include:
+API routes are mounted under `/api` in `backend/src/app.js` and `backend/src/routes/*`.
 
-- `GET /api/health` — worker/runtime + Supabase connectivity probe (returns 503 with safe reasons when misconfigured; no secrets leaked).
-- `/api/auth/*` — authentication-related endpoints (see `auth.routes.js`).
-- `/api/admin/*` — admin operations (dispatch/scheduling, orders, tracking views, etc.).
-- `/api/customer/*` — customer-facing operations.
-- `/api/restaurant/*` — restaurant operations.
-- `/api/rider/*` — rider/delivery partner operations.
+| Group | Purpose |
+|---|---|
+| `GET /api/health` | Worker/runtime and Supabase connectivity probe; returns safe failures without leaking secrets. |
+| `/api/auth/*` | Authentication-related endpoints. |
+| `/api/admin/*` | Admin dispatch, scheduling, orders, riders, tracking, and oversight. |
+| `/api/customer/*` | Customer-facing ordering, addresses, and tracking operations. |
+| `/api/restaurant/*` | Restaurant menu, preparation, and order operations. |
+| `/api/rider/*` | Rider assignment, availability, location, and history operations. |
 
-Exact request/response shapes are defined in route handlers and shared helpers in `backend/src/lib/*`.
+Exact request/response shapes are defined in the route handlers and shared helpers under `backend/src/lib/*`.
 
 ---
 
-## Local installation and configuration
+## Local installation
 
 ### Prerequisites
 
-- Node.js **>= 22.12.0**
-- npm (lockfiles committed)
+- Node.js `>=22.12.0`
+- npm
+- A Supabase project with migrations applied for full workflow testing
 
-### Install
+### Install and run
 
 ```powershell
-cd C:\Users\Nikhil\Desktop\RouteSync
+git clone https://github.com/Nikhil306-ctrl/RouteSync.git
+cd RouteSync
 npm run install:all
-```
-
-### Configure environment files (do not commit real secrets)
-
-Create/edit local files (ignored by Git):
-
-| File | Variables (placeholders only) |
-|---|---|
-| `frontend/.env.local` | `VITE_SUPABASE_URL`, `VITE_SUPABASE_PUBLISHABLE_KEY` |
-| `backend/.dev.vars` | `SUPABASE_URL`, `SUPABASE_PUBLISHABLE_KEY`, `SUPABASE_SECRET_KEY` |
-
-Templates: `frontend/.env.local.example`, `backend/.dev.vars.example`, `.env.example`.
-
-Optional:
-- `CORS_ORIGIN` (Worker) — comma-separated origins (default includes `http://localhost:5173`)
-- `DEMO_*` variables only when running demo seed/remote tests as documented in `tests/README.md` and `docs/PHASE3_DATABASE_AUTH.md`
-
-### Run (development)
-
-```powershell
 npm run dev
 ```
 
-Or separately:
+Typical local URLs:
+
+- Frontend: `http://localhost:5173`
+- Worker/API: `http://localhost:8787`
+
+Run processes separately when needed:
 
 ```powershell
 npm run dev:worker
 npm run dev:frontend
 ```
 
-Typical URLs: Worker/API `http://localhost:8787`, Vite `http://localhost:5173` (with proxy to API as configured).
+### Environment configuration
 
-### Database migrations and demo seed
+Create local ignored environment files using placeholders only:
 
-Apply migrations manually in order to your Supabase project per `docs/PHASE3_DATABASE_AUTH.md`. Demo seed (`npm run seed:demo`) is development-only and requires explicit env configuration; follow documentation carefully.
+| File | Variables |
+|---|---|
+| `frontend/.env.local` | `VITE_SUPABASE_URL`, `VITE_SUPABASE_PUBLISHABLE_KEY` |
+| `backend/.dev.vars` | `SUPABASE_URL`, `SUPABASE_PUBLISHABLE_KEY`, `SUPABASE_SECRET_KEY` |
+| Worker `CORS_ORIGIN` | Comma-separated allowed origins; configured for the live demo and `http://localhost:5173` |
+
+Templates: `frontend/.env.local.example`, `backend/.dev.vars.example`, and `.env.example`.
+
+The Worker secret key is server/CLI-only. Never place it in frontend environment variables or commit it. demo seed variables are development-only; follow `tests/README.md` and `docs/PHASE3_DATABASE_AUTH.md`.
+
+### Database migrations
+
+Apply migrations in order to the intended Supabase project. The order lifecycle runbook is in `docs/PHASE5_ORDER_LIFECYCLE.md`; database/auth setup is in `docs/PHASE3_DATABASE_AUTH.md`.
 
 ---
 
-## Cloudflare deployment (summary)
+## Deployment
+
+The live demo is deployed at `https://routesync.vijapurnikhil61.workers.dev`.
 
 After building and validating locally:
 
@@ -236,78 +374,108 @@ npm run worker:deploy
 npm run worker:tail
 ```
 
-Set Worker secrets from `backend/` (names only, values set securely):
+Set Worker secrets from `backend/` with `wrangler secret put <NAME>`:
 
 - `SUPABASE_URL`
 - `SUPABASE_PUBLISHABLE_KEY`
 - `SUPABASE_SECRET_KEY`
 
-Use `wrangler secret put <NAME>`. Do not place the service role/secret key in frontend env or in Git.
+The current `backend/wrangler.jsonc` intentionally sets `"triggers": { "crons": [] }`. Automatic scheduling is disabled pending persistence reliability investigation; manual/admin scheduling remains the supported path.
 
 ---
 
-## Verified testing results (from repository evidence)
+## Security and authentication
 
-- **Local automated tests:** `npm run test:local` — **105/105 passed** (Node test runner suite as of last verified run in this repo). CI runs the same command.
-- **Production build:** `npm run build` — **passes** (frontend Vite build). CI runs the same command.
-- **Remote/auth security suite (`tests/remote-auth.test.mjs`):** in documented runs, **16/16 executed tests passed** with **1 optional registration test skipped** when prerequisites/configuration were not applied (see `tests/README.md`). This requires a configured remote environment and is not run in default CI.
-- **Scheduling/live notes (evidence-based):** isolated scheduling persistence and database readback have been demonstrated in controlled diagnostics; assignment cancellation, route cancellation, and rider capacity release behaviors have been verified in related flows during development. Full advanced live verification is **not complete** (see Known limitations).
+- Supabase Auth issues the user session; trusted `profiles.role` data drives authorization.
+- RLS and least-privilege grants scope reads and protect application tables.
+- Sensitive lifecycle and scheduling writes go through service-role RPCs.
+- Session recovery uses a bounded, single-flight refresh with same-user guards and invalid-session listeners; the dedicated regression suite passes locally.
+- Production verification of the session-recovery behavior remains pending.
+- Browser clients use publishable keys only; `SUPABASE_SECRET_KEY` is server/CLI-only.
+- Never commit `.env`, `backend/.dev.vars`, private keys, auth session exports, or rotated secrets.
+
+If a secret is exposed, rotate it immediately in the provider dashboard and update local/secret stores; do not commit the new value.
+
+---
+
+## Testing and verification
+
+```powershell
+npm run test:local
+npm run test:auth
+npm run build
+```
+
+| Check | Result |
+|---|---|
+| `npm run test:local` | **116/116 passed** |
+| Auth session recovery suite | **11/11 passed**; included in the 116 local tests |
+| `npm run build` | **Passed** with the existing Vite chunk-size advisory |
+| Remote auth suite | Optional, environment-dependent; not part of default CI |
+| Full live production verification | **Not complete**; see limitations |
+
+Local tests are static/unit tests and source assertions. They do not connect to PostgreSQL or verify every feature in production. Controlled diagnostics have demonstrated isolated scheduling persistence and related readback/cancellation/capacity behaviors, but advanced live verification is not certified in this repository state.
 
 ---
 
 ## Known limitations
 
-- **Intermittent `persist_schedule` RPC timeout (unresolved reliability limitation):** under some conditions, persistence via `persist_schedule` can time out (observed in diagnostics). Reconciliation steps may be required after timeouts; do **not** assume a timed-out client call means nothing committed without checking database state. Root cause remains under investigation/documented as a limitation.
-- **Advanced live verification incomplete:** end-to-end live verification across all portals and scheduled/cron-driven paths is not fully certified in this repository state.
-- **Academic project scope:** not hardened for production SLAs, incident response, or full observability beyond basic logs/health checks.
-- **Screenshots:** placeholder section below is intended for real screenshots added later; no fake/broken image links are included.
+- **Scheduling cron is intentionally disabled** in `backend/wrangler.jsonc` while persistence reliability is investigated.
+- **`persist_schedule` can intermittently time out** under some conditions. Reconciliation may be required; a timed-out client call does not prove that nothing was committed. Check database state before retrying destructive steps.
+- **Session recovery is regression-tested locally** but still needs production verification.
+- **Public routing is approximate.** The frontend uses the public OSRM demo server with geographic fallback; E1 uses Haversine estimates rather than a verified road network or live traffic model.
+- **Payments are cash on delivery**; no online payment integration is implemented.
+- **Realtime is optional**; capped polling is the required fallback.
+- **Academic prototype scope:** not hardened for production SLAs, incident response, observability, or commercial deployment.
+- **Not every feature has independent production verification.** Evidence is limited to local tests, static checks, controlled diagnostics, and the deployed demo.
 
 ---
 
-## Screenshots (add later)
+## Roadmap
 
-_Place real screenshots in `docs/screenshots/` (or similar) and link them here once captured. Do not add fabricated images._
+These items are proposed work, not completed features:
 
-| Area | Screenshot |
+| Proposed area | Direction |
 |---|---|
-| Landing / marketing | _(to be added)_ |
-| Customer portal | _(to be added)_ |
-| Restaurant portal | _(to be added)_ |
-| Rider portal | _(to be added)_ |
-| Admin dispatch | _(to be added)_ |
+| Scheduling reliability | Resolve `persist_schedule` timeout root cause and reconsider a safe cron trigger. |
+| Batch economics | Multi-order batching incentives and smarter grouping. |
+| Pricing | Dynamic delivery pricing based on distance, windows, and capacity. |
+| Restaurant analytics | Profitability and operational reporting. |
+| Retention | Coupons and loyalty flows. |
+| Payments | Integrations beyond cash on delivery. |
+| Scale | Improved scheduling reliability and scalability under larger order volumes. |
+| Visualization | Enhanced delivery route visualization and live tracking UX. |
+
+---
+
+## Academic team and contributions
+
+- **Institution:** KLE Technological University, Dr. M. S. Sheshgiri Campus
+- **Department:** Computer Science and Engineering
+- **Team:** 05 | Academic Year 2026–27
+- **Guide:** Prof. Tabassum
+
+| Member | USN | Contribution |
+|---|---|---|
+| Nikhita Rajesh Patil | `02FE24BCS005` | E1 — Smart Scheduling and Optimization |
+| Nikhil Vijapur | `02FE24BCS043` | E2 — Data and Validation |
+| Sakshi Magadum | `02FE24BCS159` | E3 — Resource Management |
+| Ritvik Shinde | `02FE24BCS083` | E4 — Communication and Tracking |
+
+Contributions are academic and coordinated within Team 05. Please preserve the role/engine boundaries when extending the system.
 
 ---
 
 ## Documentation index
 
 - `docs/PROJECT_PLAN.md` — project plan and phases
-- `docs/PHASE3_DATABASE_AUTH.md` — database/auth setup, migrations, seed, verification
-- `docs/PHASE5_ORDER_LIFECYCLE.md` — order lifecycle notes
-- `docs/PHASE5_FINAL_REPORT.md` — phase report (if present)
-- `tests/README.md` — test running instructions (local vs remote)
+- `docs/PHASE3_DATABASE_AUTH.md` — database/auth setup, migrations, seed, and verification
+- `docs/PHASE5_ORDER_LIFECYCLE.md` — order lifecycle runbook
+- `docs/PHASE5_FINAL_REPORT.md` — Phase 5 correction report
+- `tests/README.md` — local and remote test instructions
 
 ---
 
-## Academic team and project information
+## License and status
 
-- **Project:** RouteSync — Smart Constraint-Based Food Delivery Management System
-- **Institution:** KLE Technological University, Dr. M. S. Sheshgiri Campus
-- **Department:** Computer Science and Engineering
-- **Team:** 05
-- **Guide:** Prof. Tabassum
-- **Team members:**
-  - Nikhita Rajesh Patil — 02FE24BCS005 — Smart Scheduling & Optimization
-  - Nikhil Vijapur — 02FE24BCS043 — Data & Validation
-  - Sakshi Magadum — 02FE24BCS159 — Resource Management
-  - Ritvik Shinde — 02FE24BCS083 — Communication & Tracking
-- **Repository:** `https://github.com/Nikhil306-ctrl/RouteSync`
-
----
-
-## Security notes (summary)
-
-- Never commit `.env`, `backend/.dev.vars`, private keys, or auth session exports.
-- Browser clients use publishable keys only; `SUPABASE_SECRET_KEY` is server/CLI-only.
-- RLS and trusted RPCs are the intended enforcement layers; do not bypass them in clients.
-
-If you believe a secret was exposed, rotate it immediately in the Supabase/dashboard provider and update local/secret stores—do not commit the new value.
+RouteSync is an academic prototype prepared for demonstration. No separate commercial license or production support commitment is granted.

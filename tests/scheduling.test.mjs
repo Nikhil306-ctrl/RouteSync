@@ -172,7 +172,7 @@ test('static: confirmation is not blocked by scheduling and admin loading is sco
   const dispatch = readFileSync(new URL('../frontend/src/portals/admin/pages/AdminDispatch.jsx', import.meta.url), 'utf8');
   assert.doesNotMatch(restaurant, /await schedule\(/);
   assert.match(worker, /scheduled:.*ctx\.waitUntil\(runPendingSchedulingOnce\(env\)\)/);
-  assert.match(wrangler, /"crons": \["\* \* \* \* \*"\]/);
+  assert.match(wrangler, /"crons": \[\]/);
   assert.match(dispatch, /loading=\{schedulingTarget === order\.id\}/);
   const scheduling = readFileSync(new URL('../backend/src/lib/scheduling.js', import.meta.url), 'utf8');
   assert.match(scheduling, /timeoutMs: SCHEDULING_TIMEOUT_MS/);

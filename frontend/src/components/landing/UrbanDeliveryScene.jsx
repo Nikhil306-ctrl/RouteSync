@@ -25,9 +25,9 @@ const routePoints = [
   new THREE.Vector3(0.2, 0.42, 15.2),
 ];
 const cameraFrames = [
-  { at: 0, position: [13.5, 9.5, -31], target: [0, 1.4, -13] },
-  { at: 0.14, position: [8.6, 4.6, -22], target: [5.6, 1.5, -15] },
-  { at: 0.26, position: [4.6, 3.1, -18.4], target: [2.2, 1.2, -15.2] },
+  { at: 0, position: [12.5, 11.5, -34], target: [0, 1.2, -14] },
+  { at: 0.14, position: [-3.5, 5.6, -22], target: [4.8, 1.3, -15.4] },
+  { at: 0.26, position: [-2.8, 4.4, -19.6], target: [4.2, 1.2, -15.4] },
   { at: 0.38, position: [1.5, 17.5, -11], target: [0, 0.3, -1] },
   { at: 0.5, position: [8.2, 9.4, -6.5], target: [-0.4, 0.3, 1] },
   { at: 0.63, position: [5.1, 4.9, -4], target: [-0.6, 1, 4.5] },
@@ -109,15 +109,15 @@ function RoadMarkings() {
   return (
     <group>
       {dashes.map((z) => (
-        <mesh key={`dash-${z}`} position={[0, 0.035, z]} rotation={[-Math.PI / 2, 0, 0]}>
+        <mesh key={`dash-${z}`} position={[0, 0.206, z]} rotation={[-Math.PI / 2, 0, 0]}>
           <planeGeometry args={[0.12, 1.5]} />
-          <meshBasicMaterial color={CHALK} transparent opacity={0.48} depthWrite={false} />
+          <meshBasicMaterial color={CHALK} transparent opacity={0.48} depthWrite={false} polygonOffset polygonOffsetFactor={-1} polygonOffsetUnits={-1} />
         </mesh>
       ))}
       {crossings.map(([x, z]) => (
-        <mesh key={`cross-${x}-${z}`} position={[x, 0.036, z]} rotation={[-Math.PI / 2, 0, 0]}>
+        <mesh key={`cross-${x}-${z}`} position={[x, 0.208, z]} rotation={[-Math.PI / 2, 0, 0]}>
           <planeGeometry args={[0.45, 1.8]} />
-          <meshBasicMaterial color={CHALK} transparent opacity={0.58} depthWrite={false} />
+          <meshBasicMaterial color={CHALK} transparent opacity={0.58} depthWrite={false} polygonOffset polygonOffsetFactor={-1} polygonOffsetUnits={-1} />
         </mesh>
       ))}
     </group>
@@ -145,9 +145,13 @@ function Neighborhood() {
         <planeGeometry args={[82, 96]} />
         <meshStandardMaterial color="#858f88" roughness={1} />
       </mesh>
-      {[-5.35, 5.35].map((x) => (
-        <mesh key={`walk-${x}`} position={[x, -0.11, 0]}>
-          <boxGeometry args={[2.5, 0.22, 92]} />
+      <mesh position={[0, 0.18, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+        <planeGeometry args={[10, 72]} />
+        <meshStandardMaterial color="#3b423f" roughness={1} />
+      </mesh>
+      {[-6.2, 6.2].map((x) => (
+        <mesh key={`walk-${x}`} position={[x, 0.175, 0]}>
+          <boxGeometry args={[2.4, 0.35, 84]} />
           <meshStandardMaterial color="#b9bdb5" roughness={0.96} />
         </mesh>
       ))}

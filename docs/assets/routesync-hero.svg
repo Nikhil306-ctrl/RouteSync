@@ -1,0 +1,70 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 360" role="img" aria-labelledby="title desc">
+  <title id="title">RouteSync — Smart Constraint-Based Food Delivery Management System</title>
+  <desc id="desc">A charcoal branded banner with the RouteSync wordmark and a route linking a restaurant, rider, and customer.</desc>
+  <defs>
+    <linearGradient id="warmth" x1="620" y1="0" x2="1200" y2="360" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#E7652C" stop-opacity="0.20" />
+      <stop offset="0.55" stop-color="#F2A65A" stop-opacity="0.08" />
+      <stop offset="1" stop-color="#0B1012" stop-opacity="0" />
+    </linearGradient>
+    <pattern id="dots" width="28" height="28" patternUnits="userSpaceOnUse">
+      <circle cx="2" cy="2" r="1" fill="#2A3538" />
+    </pattern>
+    <marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M0 0 L10 5 L0 10 Z" fill="#E7652C" />
+    </marker>
+  </defs>
+
+  <rect width="1200" height="360" fill="#0B1012" />
+  <rect x="620" width="580" height="360" fill="url(#warmth)" />
+  <rect x="620" width="580" height="360" fill="url(#dots)" opacity="0.28" />
+  <rect x="0.5" y="0.5" width="1199" height="359" fill="none" stroke="#2A3538" />
+  <path d="M620 0 V360" stroke="#2A3538" stroke-width="1" />
+  <path d="M646 328 H752" stroke="#F2A65A" stroke-opacity="0.22" stroke-width="2" />
+  <path d="M934 44 H1128" stroke="#F2A65A" stroke-opacity="0.16" stroke-width="2" />
+
+  <g font-family="Segoe UI, Inter, system-ui, sans-serif">
+    <text x="64" y="112" fill="#F4F1EA" font-size="64" font-weight="700" letter-spacing="-2">RouteSync</text>
+    <rect x="66" y="134" width="56" height="4" rx="2" fill="#E7652C" />
+    <text x="64" y="188" fill="#E7652C" font-size="17" font-weight="700" letter-spacing="1.8">SMART CONSTRAINT-BASED</text>
+    <text x="64" y="224" fill="#F4F1EA" font-size="26" font-weight="500">Food Delivery Management System</text>
+    <text x="64" y="266" fill="#B4BEBB" font-size="15">Four engines. One coordinated delivery network.</text>
+  </g>
+
+  <g fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M748 224 C800 224 812 154 874 154 C936 154 944 224 1034 224" stroke="#F2A65A" stroke-opacity="0.20" stroke-width="8" />
+    <path d="M748 224 C800 224 812 154 874 154 C936 154 944 224 1034 224" stroke="#E7652C" stroke-width="3" marker-end="url(#arrow)" />
+  </g>
+
+  <g>
+    <circle cx="748" cy="224" r="54" fill="#151D1F" stroke="#2A3538" stroke-width="2" />
+    <circle cx="748" cy="224" r="44" fill="none" stroke="#F2A65A" stroke-opacity="0.48" stroke-width="1.5" />
+    <path d="M724 212 H772 V242 H724 Z" fill="none" stroke="#F4F1EA" stroke-width="2.5" />
+    <path d="M720 212 L725 198 H771 L776 212 Z" fill="#E7652C" />
+    <path d="M740 242 V226 H756 V242" fill="none" stroke="#F4F1EA" stroke-width="2.5" />
+  </g>
+
+  <g>
+    <circle cx="874" cy="154" r="58" fill="#151D1F" stroke="#2A3538" stroke-width="2" />
+    <circle cx="874" cy="154" r="47" fill="none" stroke="#F2A65A" stroke-opacity="0.48" stroke-width="1.5" />
+    <circle cx="863" cy="130" r="7" fill="#F2A65A" />
+    <path d="M854 143 L866 132 H883 L894 145" fill="none" stroke="#F4F1EA" stroke-width="3" />
+    <circle cx="850" cy="165" r="9" fill="none" stroke="#F4F1EA" stroke-width="3" />
+    <circle cx="890" cy="165" r="9" fill="none" stroke="#F4F1EA" stroke-width="3" />
+    <path d="M850 165 H869 L881 153 H898" fill="none" stroke="#F4F1EA" stroke-width="3" />
+  </g>
+
+  <g>
+    <circle cx="1034" cy="224" r="54" fill="#151D1F" stroke="#2A3538" stroke-width="2" />
+    <circle cx="1034" cy="224" r="44" fill="none" stroke="#F2A65A" stroke-opacity="0.48" stroke-width="1.5" />
+    <path d="M1012 218 L1034 200 L1056 218" fill="none" stroke="#F4F1EA" stroke-width="2.5" />
+    <path d="M1018 218 V244 H1050 V218" fill="none" stroke="#F4F1EA" stroke-width="2.5" />
+    <rect x="1027" y="228" width="14" height="12" rx="1.5" fill="#E7652C" />
+  </g>
+
+  <g fill="#B4BEBB" font-family="Segoe UI, Inter, system-ui, sans-serif" font-size="12" font-weight="600" letter-spacing="1.6" text-anchor="middle">
+    <text x="748" y="300">RESTAURANT</text>
+    <text x="874" y="230">RIDER</text>
+    <text x="1034" y="300">CUSTOMER</text>
+  </g>
+</svg>

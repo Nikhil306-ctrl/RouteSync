@@ -1,4 +1,5 @@
 import { getSupabaseClient } from '../lib/supabase.js';
+import { createSessionRecovery } from './sessionRecovery.js';
 
 /**
  * Trusted Worker API client for the Phase 5 order lifecycle.
@@ -10,6 +11,12 @@ import { getSupabaseClient } from '../lib/supabase.js';
  */
 
 const BASE_URL = '/api';
+const RECOVERY_UNAVAILABLE_MESSAGE = 'Authentication service could not be reached. Try again.';
+const PRE_HANDLER_INVALID_MESSAGES = new Set([
+  'Invalid or expired session.',
+  'Authentication required.',
+]);
+const SAFE_METHODS = new Set(['GET', 'HEAD', 'OPTIONS']);
 
 export class LifecycleApiError extends Error {
   constructor(message, { status = 0, code = 'REQUEST_FAILED' } = {}) {
@@ -20,32 +27,120 @@ export class LifecycleApiError extends Error {
   }
 }
 
-async function accessToken() {
-  const supabase = getSupabaseClient();
-  if (!supabase) {
-    throw new LifecycleApiError(
-      'Supabase is not configured. Add the publishable key to frontend/.env.local.',
-      { status: 503, code: 'AUTH_UNAVAILABLE' },
-    );
+export const sessionRecovery = createSessionRecovery({ client: getSupabaseClient() });
+
+function safeToRetry({ method, path, payload, bodyText }) {
+  const requestMethod = (method || 'GET').toUpperCase();
+  if (SAFE_METHODS.has(requestMethod)) return true;
+
+  if (
+    payload?.error?.code === 'UNAUTHORIZED' &&
+    PRE_HANDLER_INVALID_MESSAGES.has(payload.error.message)
+  ) {
+    return true;
   }
 
-  const { data, error } = await supabase.auth.getSession();
-  if (error) {
-    throw new LifecycleApiError('Unable to read your session. Sign in again.', {
-      status: 401,
-      code: 'UNAUTHORIZED',
-    });
+  if (requestMethod === 'POST' && path === '/customer/orders' && bodyText !== undefined) {
+    try {
+      return Boolean(JSON.parse(bodyText)?.idempotencyKey);
+    } catch {
+      return false;
+    }
   }
 
-  const token = data?.session?.access_token;
-  if (!token) {
-    throw new LifecycleApiError('Your session has expired. Sign in again.', {
-      status: 401,
-      code: 'UNAUTHORIZED',
-    });
-  }
-  return token;
+  return false;
 }
+
+export function createLifecycleRequest({
+  fetchImpl = (input, init) => fetch(input, init),
+  recovery = sessionRecovery,
+} = {}) {
+  return async function request(path, { method = 'GET', body, signal } = {}) {
+    const session = await recovery.snapshot();
+    if (session.status === 'temporary') {
+      throw new LifecycleApiError(RECOVERY_UNAVAILABLE_MESSAGE, {
+        status: 0,
+        code: 'AUTH_UNAVAILABLE',
+      });
+    }
+    if (!session.token) {
+      throw new LifecycleApiError('Your session has expired. Sign in again.', {
+        status: 401,
+        code: 'UNAUTHORIZED',
+      });
+    }
+
+    const bodyText = body === undefined ? undefined : JSON.stringify(body);
+    const send = (token) => {
+      const headers = {
+        Accept: 'application/json',
+        Authorization: `Bearer ${token}`,
+      };
+      if (bodyText !== undefined) headers['Content-Type'] = 'application/json';
+      return fetchImpl(`${BASE_URL}${path}`, {
+        method,
+        headers,
+        body: bodyText,
+        signal,
+      });
+    };
+
+    let response;
+    try {
+      response = await send(session.token);
+    } catch (error) {
+      if (error?.name === 'AbortError') throw error;
+      throw new LifecycleApiError(
+        'The order service could not be reached. Check that the Worker is running.',
+        { status: 0, code: 'NETWORK_ERROR' },
+      );
+    }
+
+    let payload = await response.json().catch(() => null);
+
+    if (response.status === 401 && safeToRetry({ method, path, payload, bodyText })) {
+      const recovered = await recovery.recover(session.token, session.userId ?? null);
+      if (recovered.status === 'temporary') {
+        throw new LifecycleApiError(RECOVERY_UNAVAILABLE_MESSAGE, {
+          status: 0,
+          code: 'AUTH_UNAVAILABLE',
+        });
+      }
+      if (recovered.status === 'invalid' || recovered.status === 'changed') {
+        throw new LifecycleApiError(
+          recovered.status === 'changed'
+            ? 'Your account changed while recovering your session. Try again.'
+            : 'Your session has expired. Sign in again.',
+          { status: 401, code: 'UNAUTHORIZED' },
+        );
+      }
+
+      if (recovered.token) {
+        try {
+          response = await send(recovered.token);
+        } catch (error) {
+          if (error?.name === 'AbortError') throw error;
+          throw new LifecycleApiError(
+            'The order service could not be reached. Check that the Worker is running.',
+            { status: 0, code: 'NETWORK_ERROR' },
+          );
+        }
+        payload = await response.json().catch(() => null);
+      }
+    }
+
+    if (!response.ok) {
+      throw new LifecycleApiError(
+        payload?.error?.message ?? `Request failed with HTTP ${response.status}`,
+        { status: response.status, code: payload?.error?.code ?? 'REQUEST_FAILED' },
+      );
+    }
+
+    return payload;
+  };
+}
+
+const request = createLifecycleRequest();
 
 function queryString(params = {}) {
   const search = new URLSearchParams();
@@ -59,38 +154,6 @@ function queryString(params = {}) {
   }
   const serialized = search.toString();
   return serialized ? `?${serialized}` : '';
-}
-
-async function request(path, { method = 'GET', body, signal } = {}) {
-  const token = await accessToken();
-  const headers = { Accept: 'application/json', Authorization: `Bearer ${token}` };
-  if (body !== undefined) headers['Content-Type'] = 'application/json';
-
-  let response;
-  try {
-    response = await fetch(`${BASE_URL}${path}`, {
-      method,
-      headers,
-      body: body === undefined ? undefined : JSON.stringify(body),
-      signal,
-    });
-  } catch (error) {
-    if (error?.name === 'AbortError') throw error;
-    throw new LifecycleApiError(
-      'The order service could not be reached. Check that the Worker is running.',
-      { status: 0, code: 'NETWORK_ERROR' },
-    );
-  }
-
-  const payload = await response.json().catch(() => null);
-  if (!response.ok) {
-    throw new LifecycleApiError(
-      payload?.error?.message ?? `Request failed with HTTP ${response.status}`,
-      { status: response.status, code: payload?.error?.code ?? 'REQUEST_FAILED' },
-    );
-  }
-
-  return payload;
 }
 
 export function newIdempotencyKey() {

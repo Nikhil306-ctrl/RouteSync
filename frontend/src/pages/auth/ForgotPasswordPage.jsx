@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { ArrowLeft, Send } from 'lucide-react';
+import { Send } from 'lucide-react';
 import AuthLayout from '../../components/auth/AuthLayout.jsx';
 import { LabeledInput } from '../../components/ui/Field.jsx';
 import Button from '../../components/ui/Button.jsx';
@@ -37,9 +37,8 @@ export default function ForgotPasswordPage() {
 
   return (
     <AuthLayout
-      eyebrow="Account recovery"
       title="Reset your password"
-      subtitle="We will send a secure recovery link to the email on your account."
+      subtitle="We'll send a secure link to your email."
       footer={
         <p className="mt-5 text-center text-sm text-muted">
           Remembered it?{' '}
@@ -64,9 +63,6 @@ export default function ForgotPasswordPage() {
         <Button type="submit" size="lg" loading={submitting} icon={Send} className="w-full">
           {submitting ? 'Sending reset link…' : 'Send reset link'}
         </Button>
-        <Link to="/login" className="flex items-center justify-center gap-1.5 pt-1 text-xs font-bold text-slate-500 hover:text-ink">
-          <ArrowLeft className="h-3.5 w-3.5" aria-hidden="true" /> Return to sign in
-        </Link>
       </form>
     </AuthLayout>
   );

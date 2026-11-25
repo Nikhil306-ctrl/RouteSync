@@ -23,9 +23,8 @@ export default function ResetPasswordPage() {
   if (!session) {
     return (
       <AuthLayout
-        eyebrow="Recovery link"
         title="This link is no longer valid"
-        subtitle="Recovery links expire. Request a new one to continue."
+        subtitle="Request a new link to continue."
         footer={
           <p className="mt-5 text-center text-sm text-muted">
             <Link to="/forgot-password" className="font-bold text-accent hover:text-accent-strong">Request a new link</Link>
@@ -68,9 +67,8 @@ export default function ResetPasswordPage() {
 
   return (
     <AuthLayout
-      eyebrow="New password"
       title="Choose a new password"
-      subtitle="Your recovery session is active. Set a strong password to finish."
+      subtitle="Set a strong password to finish."
     >
       <form className="space-y-4" onSubmit={handleSubmit} noValidate>
         {error ? <InlineNotice tone="danger">{error}</InlineNotice> : null}

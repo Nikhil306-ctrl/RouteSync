@@ -1,4 +1,5 @@
-import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
+import { sessionRecovery } from '../services/lifecycle.js';
 import { getSupabaseClient } from '../lib/supabase.js';
 
 const AuthContext = createContext(null);
@@ -9,6 +10,8 @@ export function AuthProvider({ children }) {
   const [profile, setProfile] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const generationRef = useRef(0);
+  const hydratedUserIdRef = useRef(null);
 
   const hydrateProfile = useCallback(async (user) => {
     if (!supabase || !user) {
@@ -47,57 +50,116 @@ export function AuthProvider({ children }) {
     }
 
     let active = true;
+    let deferredTimer = null;
+
+    const applySession = async (nextSession) => {
+      const user = nextSession?.user ?? null;
+      const requestId = ++generationRef.current;
+      setSession(nextSession ?? null);
+
+      if (!user) {
+        hydratedUserIdRef.current = null;
+        setProfile(null);
+        setError(null);
+        setLoading(false);
+        return;
+      }
+
+      if (hydratedUserIdRef.current === user.id) {
+        setLoading(false);
+        return;
+      }
+
+      setLoading(true);
+      let profileData = null;
+      try {
+        profileData = await hydrateProfile(user);
+      } catch {
+        setError('Unable to load your profile. Please sign in again.');
+      }
+
+      if (!active || requestId !== generationRef.current) return;
+      hydratedUserIdRef.current = profileData ? user.id : null;
+      setLoading(false);
+    };
 
     const initialise = async () => {
-      const { data } = await supabase.auth.getSession();
-      if (!active) return;
-      setSession(data.session ?? null);
-      await hydrateProfile(data.session?.user ?? null);
-      if (active) setLoading(false);
+      try {
+        const { data, error: sessionError } = await supabase.auth.getSession();
+        if (!active) return;
+        if (sessionError) throw sessionError;
+        await applySession(data.session ?? null);
+      } catch {
+        if (!active) return;
+        generationRef.current += 1;
+        hydratedUserIdRef.current = null;
+        setSession(null);
+        setProfile(null);
+        setError('Unable to read your session. Sign in again.');
+        setLoading(false);
+      }
     };
 
     initialise();
 
     const { data: listener } = supabase.auth.onAuthStateChange((event, nextSession) => {
       if (!active) return;
-      setSession(nextSession ?? null);
+      clearTimeout(deferredTimer);
+      deferredTimer = setTimeout(() => {
+        if (!active) return;
+        applySession(nextSession ?? null);
+      }, 0);
+    });
 
-      if (event === 'SIGNED_OUT') {
-        setProfile(null);
-        setLoading(false);
-        return;
-      }
-
-      setLoading(true);
-      // Defer Supabase calls out of the auth callback to avoid deadlocks.
-      Promise.resolve().then(async () => {
-        await hydrateProfile(nextSession?.user ?? null);
-        if (active) setLoading(false);
-      });
+    const unsubscribeInvalid = sessionRecovery.onInvalidSession(({ userId }) => {
+      if (!active) return;
+      if (userId && hydratedUserIdRef.current && userId !== hydratedUserIdRef.current) return;
+      clearTimeout(deferredTimer);
+      generationRef.current += 1;
+      hydratedUserIdRef.current = null;
+      setSession(null);
+      setProfile(null);
+      setError('Your session has expired. Sign in again.');
+      setLoading(false);
+      void supabase.auth.signOut({ scope: 'local' }).catch(() => {});
     });
 
     return () => {
       active = false;
+      clearTimeout(deferredTimer);
+      generationRef.current += 1;
       listener.subscription.unsubscribe();
+      unsubscribeInvalid();
     };
   }, [hydrateProfile]);
 
-  const signIn = useCallback(async (email, password) => {
-    if (!supabase) throw new Error('Authentication is not configured.');
-    setError(null);
-    const { data, error: signInError } = await supabase.auth.signInWithPassword({ email, password });
-    if (signInError) {
-      setError(signInError.message);
-      throw signInError;
-    }
-    setSession(data.session ?? null);
-    return hydrateProfile(data.user);
-  }, [hydrateProfile]);
+  const signIn = useCallback(
+    async (email, password) => {
+      if (!supabase) throw new Error('Authentication is not configured.');
+      setError(null);
+      const { data, error: signInError } = await supabase.auth.signInWithPassword({ email, password });
+      if (signInError) {
+        setError(signInError.message);
+        throw signInError;
+      }
+      generationRef.current += 1;
+      const requestId = generationRef.current;
+      setSession(data.session ?? null);
+      const profileData = await hydrateProfile(data.user);
+      if (profileData && requestId === generationRef.current) {
+        hydratedUserIdRef.current = data.user.id;
+      }
+      return profileData;
+    },
+    [hydrateProfile],
+  );
 
   const signOut = useCallback(async () => {
     if (!supabase) return;
     const { error: signOutError } = await supabase.auth.signOut();
     if (signOutError) throw signOutError;
+    generationRef.current += 1;
+    hydratedUserIdRef.current = null;
     setSession(null);
     setProfile(null);
     setError(null);
@@ -119,8 +181,14 @@ export function AuthProvider({ children }) {
 
   const refreshProfile = useCallback(async () => {
     if (!supabase) return null;
-    const { data } = await supabase.auth.getUser();
-    return hydrateProfile(data.user);
+    const { data, error: userError } = await supabase.auth.getUser();
+    if (userError) {
+      setError(userError.message);
+      return null;
+    }
+    const profileData = await hydrateProfile(data.user);
+    if (profileData) hydratedUserIdRef.current = data.user?.id ?? null;
+    return profileData;
   }, [hydrateProfile]);
 
   const value = useMemo(

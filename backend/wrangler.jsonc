@@ -3,7 +3,10 @@
   "name": "routesync",
   "main": "src/index.js",
   "compatibility_date": "2026-11-24",
-  "triggers": { "crons": ["* * * * *"] },
+  "vars": {
+    "CORS_ORIGIN": "https://routesync.vijapurnikhil61.workers.dev,http://localhost:5173"
+  },
+  "triggers": { "crons": [] },
   "assets": {
     "directory": "../frontend/dist",
     "binding": "ASSETS",

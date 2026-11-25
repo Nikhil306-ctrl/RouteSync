@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { ArrowRight, MailCheck, ShieldCheck, UserPlus } from 'lucide-react';
+import { ArrowRight, MailCheck, UserPlus } from 'lucide-react';
 import AuthLayout from '../../components/auth/AuthLayout.jsx';
 import { LabeledInput, LabeledPassword } from '../../components/ui/Field.jsx';
 import Button from '../../components/ui/Button.jsx';
@@ -81,9 +81,8 @@ export default function RegisterPage() {
   return (
     <AuthLayout
       wide
-      eyebrow="Customer registration"
-      title="Create your customer account"
-      subtitle="Discover local kitchens, build an order and keep your delivery addresses in one place."
+      title="Create your account"
+      subtitle="Order from local kitchens and follow every delivery."
       footer={
         <p className="mt-5 text-center text-sm text-muted">
           Already have an account?{' '}
@@ -148,14 +147,6 @@ export default function RegisterPage() {
               onChange={(event) => setConfirmPassword(event.target.value)}
               placeholder="Repeat password"
             />
-          </div>
-
-          <div className="flex items-start gap-2 rounded-lg border border-line bg-slate-50 p-3 text-xs leading-5 text-slate-600">
-            <ShieldCheck className="mt-0.5 h-4 w-4 shrink-0 text-emerald-600" aria-hidden="true" />
-            <p>
-              New accounts are always created with the customer role. Restaurant, delivery partner and
-              dispatcher access cannot be selected from the browser.
-            </p>
           </div>
 
           <Button type="submit" size="lg" loading={submitting} icon={UserPlus} className="w-full">

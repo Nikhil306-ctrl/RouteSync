@@ -48,7 +48,7 @@
 .header-cta svg { width: 16px; }
 
 .webgl-story { position: relative; height: 700vh; background: var(--graphite); }
-.webgl-story::after { position: absolute; z-index: 20; right: 0; bottom: 0; left: 0; height: 28vh; background: linear-gradient(to bottom, transparent, var(--ivory) 94%); content: ''; pointer-events: none; }
+.webgl-story::after { position: absolute; z-index: 20; right: 0; bottom: 0; left: 0; height: 22vh; background: linear-gradient(to bottom, transparent, var(--graphite-2) 94%); content: ''; pointer-events: none; }
 .webgl-story--static { height: auto; }
 .webgl-story--static::after { display: none; }
 .webgl-stage { position: sticky; top: 0; height: 100svh; min-height: 620px; overflow: hidden; isolation: isolate; background: var(--graphite); }
@@ -87,44 +87,45 @@
 .static-journey p { max-width: 560px; color: var(--muted); line-height: 1.7; }
 .static-journey-intro { display: flex; align-items: center; gap: 16px; margin: 30px 0 70px; color: var(--muted); font-size: 0.75rem; font-weight: 800; letter-spacing: 0.12em; text-transform: uppercase; }
 
-.network-section { padding: clamp(95px, 10vw, 145px) clamp(22px, 8vw, 122px); background: var(--ivory); color: var(--graphite); }
-.network-heading { display: grid; grid-template-columns: auto minmax(0, 1fr) minmax(220px, 330px); align-items: end; gap: 24px; }
-.network-heading .rs-eyebrow { align-self: start; margin-top: 8px; }
-.network-heading h2 { max-width: 680px; margin: 0; font-size: clamp(2.8rem, 4.3vw, 3.75rem); line-height: 1; letter-spacing: -0.035em; }
-.network-heading p { margin: 0; color: #5f6664; line-height: 1.65; }
-.role-tabs { display: grid; grid-template-columns: repeat(4, 1fr); margin-top: 58px; border-bottom: 1px solid #d4d6d2; }
-.role-tabs button { min-height: 58px; border: 0; border-bottom: 3px solid transparent; background: transparent; color: #67706d; font: 700 0.78rem var(--font-sans); cursor: pointer; }
-.role-tabs button:hover { color: var(--graphite); }
-.role-tabs button[aria-selected='true'] { border-bottom-color: var(--orange); color: var(--graphite); }
-.role-transition { min-height: 430px; }
-.role-panel { display: grid; grid-template-columns: minmax(0, 1.4fr) minmax(280px, 0.65fr); align-items: center; gap: clamp(45px, 7vw, 100px); padding-top: 48px; }
-.portal-frame { overflow: hidden; min-height: 360px; border: 1px solid #d3d6d2; border-radius: 3px; background: #e9ece9; box-shadow: 0 18px 50px rgb(13 17 18 / 0.08); }
-.portal-frame-bar { display: flex; min-height: 38px; align-items: center; gap: 14px; padding: 0 14px; border-bottom: 1px solid #d3d6d2; background: #f8f9f7; color: #6c7572; font-size: 0.68rem; font-weight: 600; }
+.network-section { padding: clamp(95px, 10vw, 145px) clamp(22px, 8vw, 122px); border-top: 1px solid rgb(244 241 234 / 0.08); background: var(--graphite-2); color: var(--ivory); }
+.network-heading { display: grid; grid-template-columns: minmax(0, 1.5fr) minmax(240px, 0.75fr); align-items: end; gap: clamp(28px, 5vw, 72px); }
+.network-heading h2 { max-width: 720px; margin: 0; font-size: clamp(2.8rem, 4.3vw, 3.75rem); line-height: 1; letter-spacing: -0.035em; }
+.network-heading p { margin: 0; color: rgb(244 241 234 / 0.72); line-height: 1.65; }
+.role-tabs { display: grid; grid-template-columns: repeat(4, 1fr); margin-top: 58px; border-bottom: 1px solid rgb(244 241 234 / 0.14); }
+.role-tabs button { min-height: 58px; border: 0; border-bottom: 3px solid transparent; background: transparent; color: rgb(244 241 234 / 0.55); font: 700 0.78rem var(--font-sans); cursor: pointer; transition: color 180ms ease, border-color 180ms ease; }
+.role-tabs button:hover { color: var(--ivory); }
+.role-tabs button[aria-selected='true'] { border-bottom-color: var(--orange); color: var(--ivory); }
+.role-transition { min-height: 460px; }
+.role-panel { display: grid; grid-template-columns: minmax(0, 1.4fr) minmax(260px, 0.62fr); align-items: center; gap: clamp(40px, 6vw, 88px); padding-top: 48px; }
+.portal-frame { overflow: hidden; min-height: 360px; border: 1px solid rgb(244 241 234 / 0.14); border-radius: 4px; background: #0d1214; box-shadow: 0 24px 60px -34px rgb(0 0 0 / 0.9); }
+.portal-frame-bar { display: flex; min-height: 38px; align-items: center; gap: 14px; padding: 0 14px; border-bottom: 1px solid rgb(244 241 234 / 0.12); background: #151d1f; color: rgb(244 241 234 / 0.62); font-size: 0.68rem; font-weight: 600; }
 .portal-window-dots { display: flex; gap: 5px; }
-.portal-window-dots i { width: 7px; height: 7px; border-radius: 50%; background: #c8cdc9; }
-.portal-window-dots i:first-child { background: #d9622b; }
-.portal-frame img { display: block; width: 100%; aspect-ratio: 16 / 10; object-fit: cover; object-position: top center; }
-.portal-frame-fallback { display: grid; min-height: 360px; place-content: center; justify-items: center; gap: 12px; padding: 42px; color: #4d5855; text-align: center; }
+.portal-window-dots i { width: 7px; height: 7px; border-radius: 50%; background: #485456; }
+.portal-window-dots i:first-child { background: var(--orange); }
+.portal-frame img { display: block; width: 100%; aspect-ratio: 1229 / 912; object-fit: cover; object-position: top center; }
+.portal-frame-fallback { display: grid; min-height: 360px; place-content: center; justify-items: center; gap: 12px; padding: 42px; color: var(--ivory); text-align: center; }
 .portal-frame-fallback svg { width: 28px; color: var(--orange); }
 .portal-frame-fallback p { margin: 0; font-weight: 700; }
-.portal-frame-fallback span { color: #78817e; font-size: 0.82rem; }
-.role-details > svg { width: 27px; color: var(--orange); }
+.portal-frame-fallback span { color: rgb(244 241 234 / 0.62); font-size: 0.82rem; }
+.role-details > svg { width: 27px; color: var(--orange-bright); }
 .role-details h3 { margin: 26px 0 0; font-size: clamp(2.2rem, 3vw, 3rem); line-height: 1; letter-spacing: -0.035em; }
-.role-details p { margin: 22px 0 0; color: #5f6664; line-height: 1.7; }
-.role-details a { display: inline-flex; min-height: 46px; align-items: center; gap: 13px; margin-top: 26px; color: var(--graphite); font-size: 0.78rem; font-weight: 800; text-decoration: underline; text-decoration-color: var(--orange); text-underline-offset: 6px; }
+.role-details p { margin: 22px 0 0; color: rgb(244 241 234 / 0.72); line-height: 1.7; }
+.role-details a { display: inline-flex; min-height: 46px; align-items: center; gap: 13px; margin-top: 26px; color: var(--ivory); font-size: 0.78rem; font-weight: 800; text-decoration: underline; text-decoration-color: var(--orange); text-underline-offset: 6px; }
+.role-details a:hover { color: var(--orange-bright); }
 .role-details a svg { width: 16px; }
-.network-close { display: flex; align-items: end; justify-content: space-between; gap: 40px; margin-top: clamp(100px, 12vw, 170px); padding-top: 70px; border-top: 1px solid #d4d6d2; }
+.network-close { display: flex; align-items: end; justify-content: space-between; gap: 40px; margin-top: clamp(100px, 12vw, 170px); padding-top: 70px; border-top: 1px solid rgb(244 241 234 / 0.14); }
 .network-close h2 { margin: 0; font-size: clamp(3rem, 4.5vw, 4.5rem); line-height: 0.97; letter-spacing: -0.035em; }
 .network-close > div { display: flex; align-items: center; gap: 24px; }
-.network-close > div > a:not(.primary-button) { color: var(--graphite); font-size: 0.78rem; font-weight: 800; }
-.site-footer { display: flex; min-height: 108px; align-items: center; justify-content: space-between; gap: 28px; padding: 24px clamp(22px, 5vw, 76px); border-top: 1px solid rgb(244 241 234 / 0.12); color: #8b9290; }
+.network-close > div > a:not(.primary-button) { color: rgb(244 241 234 / 0.78); font-size: 0.78rem; font-weight: 800; }
+.network-close > div > a:not(.primary-button):hover { color: var(--ivory); }
+.site-footer { display: flex; min-height: 108px; align-items: center; justify-content: space-between; gap: 28px; padding: 24px clamp(22px, 5vw, 76px); border-top: 1px solid rgb(244 241 234 / 0.12); background: var(--graphite-2); color: rgb(244 241 234 / 0.55); }
 .site-footer p { margin: 0; font-size: 0.68rem; }
 
 @media (max-width: 900px) {
   .site-header { grid-template-columns: 1fr auto; }
   .site-header nav { display: none; }
-  .network-heading { grid-template-columns: auto 1fr; }
-  .network-heading p { grid-column: 2; }
+  .network-heading { grid-template-columns: 1fr; }
+  .network-heading p { max-width: 560px; }
   .role-panel { grid-template-columns: 1fr; }
   .role-details { max-width: 560px; }
   .network-close { align-items: flex-start; flex-direction: column; }
@@ -151,8 +152,7 @@
   .scroll-direction, .scene-note { display: none; }
   .brand-intro .intro-lockup { flex-direction: column; gap: 6px; }
   .network-section { padding: 80px 18px; }
-  .network-heading { grid-template-columns: 1fr; }
-  .network-heading > span, .network-heading p { grid-column: 1; }
+  .network-heading p { grid-column: 1; }
   .network-heading h2 { font-size: 2.8rem; }
   .role-tabs { grid-template-columns: 1fr 1fr; margin-top: 44px; }
   .role-transition { min-height: 650px; }

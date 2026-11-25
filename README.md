@@ -1,22 +1,19 @@
 <div align="center">
   <img src="docs/assets/routesync-hero.svg" alt="RouteSync branded banner showing a route from restaurant to rider to customer" width="100%" />
-  <h3>Smart Constraint-Based Food Delivery Management System</h3>
-  <p>Four cooperating engines. One coordinated delivery network.</p>
 
   <p>
     <a href="https://routesync.vijapurnikhil61.workers.dev"><img src="https://img.shields.io/badge/Live-demo-F38020?logo=cloudflare&logoColor=white" alt="Live demo" /></a>
-    <a href="https://github.com/Nikhil306-ctrl/RouteSync"><img src="https://img.shields.io/badge/Repository-GitHub-181717?logo=github&logoColor=white" alt="GitHub repository" /></a>
-  </p>
-
-  <p>
-    <img src="https://img.shields.io/badge/Node-%3E%3D22.12.0-339933?logo=node.js&logoColor=white" alt="Node.js 22.12 or newer" />
+    <a href="https://github.com/Nikhil306-ctrl/RouteSync/actions/workflows/ci.yml"><img src="https://github.com/Nikhil306-ctrl/RouteSync/actions/workflows/ci.yml/badge.svg" alt="GitHub Actions CI" /></a>
     <img src="https://img.shields.io/badge/React-19-61DAFB?logo=react&logoColor=black" alt="React 19" />
-    <img src="https://img.shields.io/badge/Vite-7-646CFF?logo=vite&logoColor=white" alt="Vite 7" />
-    <img src="https://img.shields.io/badge/Hono-Cloudflare%20Workers-F38020?logo=cloudflare&logoColor=white" alt="Hono on Cloudflare Workers" />
+    <img src="https://img.shields.io/badge/Cloudflare%20Workers-Hono-F38020?logo=cloudflare&logoColor=white" alt="Hono on Cloudflare Workers" />
     <img src="https://img.shields.io/badge/Supabase-Postgres%20%2B%20Auth%20%2B%20RLS-3FCF8E?logo=supabase&logoColor=white" alt="Supabase PostgreSQL Auth and RLS" />
-    <img src="https://img.shields.io/badge/Tests-116%2F116%20local-2EA043?logo=github&logoColor=white" alt="116 out of 116 local tests passed" />
     <img src="https://img.shields.io/badge/Status-Academic%20prototype-lightgrey" alt="Academic prototype" />
   </p>
+</div>
+
+<div align="center">
+  <img src="docs/assets/delivery-journey.gif" alt="Illustrated cinematic RouteSync delivery journey showing a scooter moving through restaurant preparation, scheduling, rider assignment, tracking, and completion" width="348" style="max-width:100%;height:auto;" />
+  <p><em>Illustrated cinematic delivery journey — not application footage.</em></p>
 </div>
 
 ---
@@ -40,20 +37,13 @@ The repository contains a React + Vite frontend, a Hono API deployed on Cloudfla
 
 ---
 
-## Delivery journey
+## Contents
 
-The animation below is an **illustrated cinematic delivery journey**, not actual application footage. It depicts the operational path from order placement to completed delivery.
+[Portals](#portal-showcase) · [Capabilities](#core-capabilities) · [Architecture](#four-engine-architecture) · [Scheduling](#constraint-based-scheduling-and-optimization) · [Lifecycle](#order-lifecycle) · [Database](#database-architecture)
 
-<div align="center">
-  <img src="docs/assets/delivery-journey.gif" alt="Illustrated cinematic RouteSync delivery journey showing a scooter moving through restaurant preparation, scheduling, rider assignment, tracking, and completion" width="348" style="max-width:100%;height:auto;" />
-</div>
+[Stack](#technology-stack) · [API](#api-overview) · [Install](#local-installation) · [Deploy](#deployment) · [Security](#security-and-authentication) · [Tests](#testing-and-verification)
 
-1. **Customer order placed** — the order enters the trusted lifecycle.
-2. **Restaurant preparation** — the kitchen confirms the preparation window.
-3. **Constraint-based scheduling** — E1–E4 solve feasible assignments.
-4. **Rider assignment** — the assignment is committed through a trusted RPC.
-5. **Delivery tracking** — live position is shared with the customer.
-6. **Completed delivery** — the order state closes with history retained.
+[Limitations](#known-limitations) · [Roadmap](#roadmap) · [Team](#academic-team-and-contributions) · [Docs](#documentation-index)
 
 ---
 
@@ -171,7 +161,7 @@ flowchart LR
 flowchart TD
   A["Scheduling request<br/>admin manual path or disabled trigger"] --> B["E2: load and validate orders<br/>status, windows, readiness, coordinates"]
   B --> C["E3: load riders and resources<br/>active, verified, available, shifts, capacity"]
-  C --> D["E1: solve feasible assignments<br/>MRV, forward checking, branch and bound"]
+  C --> D["E1: solve feasible assignments<br/>MRV (minimum remaining values), forward checking, branch and bound"]
   D --> E["E2: build persistence payload<br/>and contract checks"]
   E --> F["Trusted Postgres RPC<br/>persist_schedule or override_schedule"]
   F --> G["Assignments, routes, stops, runs,<br/>violations, and notifications"]
@@ -237,6 +227,15 @@ flowchart LR
   RS -.-> R
 ```
 
+### Operational sequence
+
+1. **Customer order placed** — the order enters the trusted lifecycle.
+2. **Restaurant preparation** — the kitchen confirms the preparation window.
+3. **Constraint-based scheduling** — E1–E4 solve feasible assignments.
+4. **Rider assignment** — the assignment is committed through a trusted RPC.
+5. **Delivery tracking** — live position is shared with the customer.
+6. **Completed delivery** — the order state closes with history retained.
+
 - Browser roles cannot directly write protected order status rows.
 - Assignment responses revalidate rider state, shift coverage, and capacity on acceptance.
 - Reassignment before pickup restores the order to `ready` and preserves history.
@@ -256,18 +255,21 @@ erDiagram
   PROFILES ||--o{ CUSTOMER_ADDRESSES : has
   PROFILES ||--o{ ORDERS : places
   RESTAURANTS ||--o{ MENU_CATEGORIES : has
-  MENU_CATEGORIES ||--o{ MENU_ITEMS : has
+  RESTAURANTS ||--o{ MENU_ITEMS : offers
+  MENU_ITEMS }o--o| MENU_CATEGORIES : categorized_as
   RESTAURANTS ||--o{ ORDERS : receives
   ORDERS ||--o{ ORDER_ITEMS : contains
   ORDERS ||--o{ ASSIGNMENTS : scheduled_as
   RIDERS ||--o{ RIDER_SHIFTS : has
   RIDERS ||--o{ ASSIGNMENTS : assigned
   RIDERS ||--o{ RIDER_LOCATIONS : reports
-  ASSIGNMENTS ||--o| DELIVERY_ROUTES : may_use
+  ASSIGNMENTS }o--o| DELIVERY_ROUTES : uses
   DELIVERY_ROUTES ||--o{ ROUTE_STOPS : includes
-  ORDERS ||--o{ NOTIFICATIONS : generates
+  NOTIFICATIONS }o--o| ORDERS : references
   PROFILES ||--o{ NOTIFICATIONS : receives
 ```
+
+Nullable foreign keys are shown as zero-or-one relationships. `assignments.route_id` is nullable and non-unique, so a shared route can group zero or more assignments; a route stop always belongs to one route and may carry an optional assignment reference.
 
 Key domains:
 
@@ -291,7 +293,7 @@ For exact columns, constraints, and policies, refer to the SQL migration files a
 | API | Hono on Cloudflare Workers, static asset hosting, role-scoped `/api/*` routes |
 | Database | Supabase PostgreSQL, Auth, RLS, trusted RPCs, optional Realtime publication |
 | Scheduling | Constraint satisfaction, bounded backtracking, MRV, forward checking, branch and bound, Dijkstra geographic routing |
-| Tooling | Node.js `>=22.12.0`, npm workspaces via scripts, GitHub Actions CI |
+| Tooling | Node.js `>=22.12.0`, npm scripts, GitHub Actions CI |
 
 ---
 
@@ -320,12 +322,35 @@ Exact request/response shapes are defined in the route handlers and shared helpe
 - npm
 - A Supabase project with migrations applied for full workflow testing
 
-### Install and run
+### Install
 
 ```powershell
 git clone https://github.com/Nikhil306-ctrl/RouteSync.git
 cd RouteSync
 npm run install:all
+```
+
+### Configure environment
+
+Create local ignored environment files using placeholders only:
+
+| File | Variables |
+|---|---|
+| `frontend/.env.local` | `VITE_SUPABASE_URL`, `VITE_SUPABASE_PUBLISHABLE_KEY` |
+| `backend/.dev.vars` | `SUPABASE_URL`, `SUPABASE_PUBLISHABLE_KEY`, `SUPABASE_SECRET_KEY` |
+| Worker `CORS_ORIGIN` | Comma-separated allowed origins; configured for the live demo and `http://localhost:5173` |
+
+Templates: `frontend/.env.local.example`, `backend/.dev.vars.example`, and `.env.example`.
+
+The Worker secret key is server/CLI-only. Never place it in frontend environment variables or commit it. Demo seed variables are development-only; follow [tests/README.md](tests/README.md) and [docs/PHASE3_DATABASE_AUTH.md](docs/PHASE3_DATABASE_AUTH.md).
+
+### Prepare Supabase
+
+Apply migrations in order to the intended project. The order lifecycle runbook is in [docs/PHASE5_ORDER_LIFECYCLE.md](docs/PHASE5_ORDER_LIFECYCLE.md); database/auth setup is in [docs/PHASE3_DATABASE_AUTH.md](docs/PHASE3_DATABASE_AUTH.md).
+
+### Start application
+
+```powershell
 npm run dev
 ```
 
@@ -340,24 +365,6 @@ Run processes separately when needed:
 npm run dev:worker
 npm run dev:frontend
 ```
-
-### Environment configuration
-
-Create local ignored environment files using placeholders only:
-
-| File | Variables |
-|---|---|
-| `frontend/.env.local` | `VITE_SUPABASE_URL`, `VITE_SUPABASE_PUBLISHABLE_KEY` |
-| `backend/.dev.vars` | `SUPABASE_URL`, `SUPABASE_PUBLISHABLE_KEY`, `SUPABASE_SECRET_KEY` |
-| Worker `CORS_ORIGIN` | Comma-separated allowed origins; configured for the live demo and `http://localhost:5173` |
-
-Templates: `frontend/.env.local.example`, `backend/.dev.vars.example`, and `.env.example`.
-
-The Worker secret key is server/CLI-only. Never place it in frontend environment variables or commit it. demo seed variables are development-only; follow `tests/README.md` and `docs/PHASE3_DATABASE_AUTH.md`.
-
-### Database migrations
-
-Apply migrations in order to the intended Supabase project. The order lifecycle runbook is in `docs/PHASE5_ORDER_LIFECYCLE.md`; database/auth setup is in `docs/PHASE3_DATABASE_AUTH.md`.
 
 ---
 
@@ -411,6 +418,8 @@ npm run build
 | `npm run test:local` | **116/116 passed** |
 | Auth session recovery suite | **11/11 passed**; included in the 116 local tests |
 | `npm run build` | **Passed** with the existing Vite chunk-size advisory |
+| Cloudflare Worker deployment | **Successful** (`routesync`, version `877dba59-3773-46fa-b950-34fd9779227e`) |
+| Production smoke checks | **Passed** for `/api/health`, CORS, and SPA fallback |
 | Remote auth suite | Optional, environment-dependent; not part of default CI |
 | Full live production verification | **Not complete**; see limitations |
 
@@ -423,6 +432,7 @@ Local tests are static/unit tests and source assertions. They do not connect to 
 - **Scheduling cron is intentionally disabled** in `backend/wrangler.jsonc` while persistence reliability is investigated.
 - **`persist_schedule` can intermittently time out** under some conditions. Reconciliation may be required; a timed-out client call does not prove that nothing was committed. Check database state before retrying destructive steps.
 - **Session recovery is regression-tested locally** but still needs production verification.
+- **Complete mobile workflow verification remains pending** across the customer, restaurant, rider, and admin portals.
 - **Public routing is approximate.** The frontend uses the public OSRM demo server with geographic fallback; E1 uses Haversine estimates rather than a verified road network or live traffic model.
 - **Payments are cash on delivery**; no online payment integration is implemented.
 - **Realtime is optional**; capped polling is the required fallback.
@@ -468,11 +478,11 @@ Contributions are academic and coordinated within Team 05. Please preserve the r
 
 ## Documentation index
 
-- `docs/PROJECT_PLAN.md` — project plan and phases
-- `docs/PHASE3_DATABASE_AUTH.md` — database/auth setup, migrations, seed, and verification
-- `docs/PHASE5_ORDER_LIFECYCLE.md` — order lifecycle runbook
-- `docs/PHASE5_FINAL_REPORT.md` — Phase 5 correction report
-- `tests/README.md` — local and remote test instructions
+- [docs/PROJECT_PLAN.md](docs/PROJECT_PLAN.md) — project plan and phases
+- [docs/PHASE3_DATABASE_AUTH.md](docs/PHASE3_DATABASE_AUTH.md) — database/auth setup, migrations, seed, and verification
+- [docs/PHASE5_ORDER_LIFECYCLE.md](docs/PHASE5_ORDER_LIFECYCLE.md) — order lifecycle runbook
+- [docs/PHASE5_FINAL_REPORT.md](docs/PHASE5_FINAL_REPORT.md) — Phase 5 correction report
+- [tests/README.md](tests/README.md) — local and remote test instructions
 
 ---
 
